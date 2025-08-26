@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Financiera Peluquería v0.6.0</title>
+    <title>Gestión Financiera Peluquería v0.7.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Librerías para PDF -->
@@ -62,10 +62,19 @@
     <!-- Pantalla de Login -->
     <div id="login-screen" class="max-w-md mx-auto min-h-screen flex flex-col items-center justify-center p-6 space-y-6">
         <img src="https://raw.githubusercontent.com/leandroidecba/HugoAmadeyApp/refs/heads/main/Hugo%20Amadey%20Logo_Transparente-V03.png" alt="Logo de la Empresa" class="w-48 h-auto">
-        <p class="text-gray-400 text-center">Selecciona tu rol para continuar</p>
-        <div class="w-full space-y-4">
-            <button id="login-admin-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl text-lg">Admin</button>
-            <button id="login-cajero-btn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl text-lg">Cajero</button>
+        <div id="role-selection" class="w-full text-center">
+            <p class="text-gray-400 text-center mb-4">Selecciona tu rol para continuar</p>
+            <div class="w-full space-y-4">
+                <button id="select-admin-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl text-lg">Admin</button>
+                <button id="select-cajero-btn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl text-lg">Cajero</button>
+            </div>
+        </div>
+        <div id="password-section" class="w-full hidden">
+             <p id="password-prompt" class="text-center mb-4"></p>
+             <input type="password" id="password-input" class="w-full bg-gray-800 rounded-lg px-3 py-3 text-center text-lg" placeholder="••••••••">
+             <p id="login-error" class="text-red-500 text-sm text-center mt-2 h-4"></p>
+             <button id="login-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-lg mt-4">Ingresar</button>
+             <button id="back-to-role-selection" class="w-full mt-2 text-gray-400 text-sm">Volver</button>
         </div>
     </div>
 
@@ -418,8 +427,15 @@
             // --- SELECTORES DE ELEMENTOS ---
             const loginScreen = document.getElementById('login-screen');
             const mainApp = document.getElementById('main-app');
-            const loginAdminBtn = document.getElementById('login-admin-btn');
-            const loginCajeroBtn = document.getElementById('login-cajero-btn');
+            const selectAdminBtn = document.getElementById('select-admin-btn');
+            const selectCajeroBtn = document.getElementById('select-cajero-btn');
+            const roleSelection = document.getElementById('role-selection');
+            const passwordSection = document.getElementById('password-section');
+            const passwordPrompt = document.getElementById('password-prompt');
+            const passwordInput = document.getElementById('password-input');
+            const loginBtn = document.getElementById('login-btn');
+            const loginError = document.getElementById('login-error');
+            const backToRoleSelectionBtn = document.getElementById('back-to-role-selection');
             const fab = document.getElementById('fab');
             const fabActionModal = document.getElementById('fab-action-modal');
             const closeFabModalBtn = document.getElementById('close-fab-modal-btn');
@@ -500,6 +516,7 @@
             let datesWithRecords = new Set();
             let currentEditingPreset = { type: null, id: null };
             let currentUserRole = null;
+            let selectedRoleForLogin = null;
             
             // --- FUNCIONES DE UTILIDAD ---
             function log(message) {
@@ -516,16 +533,79 @@
             }
 
             // --- LÓGICA DE LOGIN Y ROLES ---
-            function login(role) {
-                currentUserRole = role;
-                loginScreen.classList.add('hidden');
-                mainApp.classList.remove('hidden');
-                applyRolePermissions();
+            async function hashPassword(password) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(password);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                return hashHex;
             }
+
+            async function verifyLogin(role, password) {
+                loginError.textContent = '';
+                const enteredHash = await hashPassword(password);
+                
+                try {
+                    const roleDocRef = doc(db, `artifacts/${appId}/public/data/roles`, role);
+                    const roleDocSnap = await getDoc(roleDocRef);
+
+                    if (roleDocSnap.exists()) {
+                        const storedHash = roleDocSnap.data().passwordHash;
+                        if (enteredHash === storedHash) {
+                            currentUserRole = role;
+                            loginScreen.classList.add('hidden');
+                            mainApp.classList.remove('hidden');
+                            applyRolePermissions();
+                        } else {
+                            loginError.textContent = 'Contraseña incorrecta.';
+                        }
+                    } else {
+                        loginError.textContent = `No se encontró configuración para el rol '${role}'.`;
+                        log(`Error: Documento para el rol '${role}' no encontrado en la colección 'roles'.`);
+                    }
+                } catch (error) {
+                    log(`Error al verificar login: ${error.message}`);
+                    loginError.textContent = 'Error al verificar. Intente de nuevo.';
+                }
+            }
+
+
+            function showPasswordScreen(role) {
+                selectedRoleForLogin = role;
+                roleSelection.classList.add('hidden');
+                passwordSection.classList.remove('hidden');
+                passwordPrompt.textContent = `Ingresar como ${role.charAt(0).toUpperCase() + role.slice(1)}`;
+                passwordInput.value = '';
+                loginError.textContent = '';
+                passwordInput.focus();
+            }
+
+            function showRoleSelectionScreen() {
+                selectedRoleForLogin = null;
+                passwordSection.classList.add('hidden');
+                roleSelection.classList.remove('hidden');
+            }
+
+            selectAdminBtn.addEventListener('click', () => showPasswordScreen('admin'));
+            selectCajeroBtn.addEventListener('click', () => showPasswordScreen('cajero'));
+            backToRoleSelectionBtn.addEventListener('click', showRoleSelectionScreen);
+            loginBtn.addEventListener('click', () => {
+                if (selectedRoleForLogin) {
+                    verifyLogin(selectedRoleForLogin, passwordInput.value);
+                }
+            });
+            passwordInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    loginBtn.click();
+                }
+            });
+
 
             function logout() {
                 currentUserRole = null;
                 mainApp.classList.add('hidden');
+                showRoleSelectionScreen();
                 loginScreen.classList.remove('hidden');
                 switchTab('dashboard'); 
             }
@@ -595,8 +675,6 @@
                 }
             }
 
-            loginAdminBtn.addEventListener('click', () => login('admin'));
-            loginCajeroBtn.addEventListener('click', () => login('cajero'));
             tabSalirBtn.addEventListener('click', logout);
 
 
