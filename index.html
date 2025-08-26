@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Financiera Peluquería v0.5.6</title>
+    <title>Gestión Financiera Peluquería v0.6.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Librerías para PDF -->
@@ -59,173 +59,188 @@
 </head>
 <body class="bg-[#121212] text-white antialiased">
 
-    <div id="app-container" class="max-w-md mx-auto min-h-screen flex flex-col">
-        
-        <!-- Contenido Principal -->
-        <main class="flex-grow overflow-y-auto custom-scrollbar pb-24">
-            <!-- SECCIÓN 1: DASHBOARD DEL DÍA -->
-            <div id="dashboard-content" class="p-6 space-y-6">
-                <section id="start-day-card" class="bg-[#1E1E1E] p-4 rounded-xl flex items-center justify-between">
-                    <div><h2 class="font-semibold">Caja del Día</h2><p id="caja-status-text" class="text-sm text-gray-400">Aún no has iniciado la caja hoy.</p></div>
-                    <button id="iniciar-caja-btn" class="bg-white text-black text-sm font-bold py-2 px-4 rounded-lg">Iniciar Caja</button>
-                </section>
-                <section class="grid grid-cols-2 gap-4">
-                    <div class="bg-[#1E1E1E] p-4 rounded-xl col-span-2"><h2 class="text-sm font-medium text-gray-400">TOTAL FACTURADO (SIN RECARGOS)</h2><p id="dashboard-total-ingresos" class="text-3xl font-semibold mt-2">$0</p></div>
-                    <div class="bg-[#1E1E1E] p-4 rounded-xl"><h2 class="text-sm font-medium text-gray-400">EN EFECTIVO</h2><p id="dashboard-ingresos-efectivo" class="text-2xl font-semibold mt-2">$0</p></div>
-                    <div class="bg-[#1E1E1E] p-4 rounded-xl"><h2 class="text-sm font-medium text-gray-400">EN DIGITAL</h2><p id="dashboard-ingresos-digital" class="text-2xl font-semibold mt-2">$0</p></div>
-                    <div class="bg-[#1E1E1E] p-4 rounded-xl col-span-2"><h2 class="text-sm font-medium text-gray-400">GASTOS OPERATIVOS</h2><p id="dashboard-gastos-operativos" class="text-2xl font-semibold mt-2 text-red-400">$0</p></div>
-                    <div class="bg-blue-900/50 border border-blue-700 p-4 rounded-xl col-span-2"><h2 class="text-sm font-medium text-blue-300">BALANCE DEL DÍA EN EFECTIVO</h2><p id="dashboard-balance" class="text-3xl font-bold mt-2">$0</p></div>
-                </section>
-            </div>
-
-            <!-- SECCIÓN 2: VISOR DE REPORTES -->
-            <div id="reportes-content" class="p-6 space-y-6 hidden">
-                <div class="space-y-4">
-                    <div class="grid grid-cols-2 gap-2 bg-gray-900 p-1 rounded-lg">
-                        <button id="report-movimientos-btn" class="w-full py-2 px-4 rounded-md text-sm font-semibold bg-gray-700 text-white">Movimientos</button>
-                        <button id="report-comisiones-btn" class="w-full py-2 px-4 rounded-md text-sm font-semibold text-gray-400 hover:bg-gray-800">Comisiones</button>
-                    </div>
-                </div>
-
-                <!-- Vista de Movimientos -->
-                <div id="movimientos-view">
-                    <button id="date-selector-btn" class="w-full bg-gray-800 p-3 rounded-lg text-lg font-semibold text-center hover:bg-gray-700 transition-colors">
-                        Seleccionar fecha
-                    </button>
-                    <div id="details-container" class="space-y-6 mt-6">
-                        <section>
-                            <h3 class="text-lg font-semibold text-gray-300">Ingresos por Comanda</h3>
-                            <div id="comanda-details-list" class="space-y-3 mt-2"></div>
-                        </section>
-                        <section>
-                            <h3 class="text-lg font-semibold text-gray-300">Gastos Operativos</h3>
-                            <div id="gastos-operativos-list" class="space-y-3 mt-2"></div>
-                        </section>
-                        <section id="admin-gastos-section">
-                            <h3 class="text-lg font-semibold text-gray-300">Gastos Administrativos</h3>
-                            <div id="gastos-administrativos-list" class="space-y-3 mt-2"></div>
-                        </section>
-                    </div>
-                    <div id="summary-container" class="bg-gray-800 p-4 rounded-lg space-y-3 mt-6">
-                         <h2 class="text-xl font-bold mb-2">Resumen del Día</h2>
-                         <div class="flex justify-between text-green-400"><span class="font-medium">Total Ingresos (sin recargos):</span><span id="summary-ingresos" class="font-semibold">$0</span></div>
-                         <div class="flex justify-between text-yellow-400"><span class="font-medium">Total Ingresos por Recargos:</span><span id="summary-recargos" class="font-semibold">$0</span></div>
-                         <div class="flex justify-between text-red-400"><span class="font-medium">Gastos Operativos:</span><span id="summary-gastos-op" class="font-semibold">-$0</span></div>
-                         <div class="flex justify-between text-red-400"><span class="font-medium">Gastos Administrativos:</span><span id="summary-gastos-admin" class="font-semibold">-$0</span></div>
-                         <hr class="border-gray-600">
-                         <div class="flex justify-between text-xl"><span class="font-bold">BALANCE OPERATIVO:</span><span id="summary-balance" class="font-bold">$0</span></div>
-                    </div>
-                </div>
-
-                <!-- Vista de Comisiones -->
-                <div id="comisiones-view" class="hidden space-y-6">
-                    <div class="bg-gray-800 p-4 rounded-lg space-y-4">
-                        <div class="flex items-center gap-2">
-                            <input type="date" id="comision-fecha-inicio" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
-                            <span class="text-gray-400">-</span>
-                            <input type="date" id="comision-fecha-fin" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
-                        </div>
-                        <select id="comision-profesional-select" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm"><option>Seleccionar Profesional</option></select>
-                        <button id="generar-reporte-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Generar Reporte</button>
-                    </div>
-                    <div id="comision-reporte-container" class="hidden">
-                        <div class="table-container custom-scrollbar">
-                            <table id="comision-report-table" class="w-full text-sm text-left whitespace-nowrap">
-                                <thead class="bg-gray-700 sticky top-0">
-                                    <tr>
-                                        <th class="p-2">Nº Com.</th>
-                                        <th class="p-2">Fecha</th>
-                                        <th class="p-2">Servicio/Producto</th>
-                                        <th class="p-2">Voucher</th>
-                                        <th class="p-2">%</th>
-                                        <th class="p-2 text-right">Facturado</th>
-                                        <th class="p-2 text-right">Comisión</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="comision-table-body" class="bg-gray-800">
-                                </tbody>
-                                <tfoot class="bg-gray-900 sticky bottom-0">
-                                    <tr>
-                                        <td colspan="5" class="p-2 font-bold">TOTALES</td>
-                                        <td id="comision-total-facturado" class="p-2 text-right font-bold">$0</td>
-                                        <td id="comision-total-comision" class="p-2 text-right font-bold text-green-400">$0</td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                        <button id="exportar-pdf-btn" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Exportar PDF</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECCIÓN 3: AJUSTES -->
-            <div id="ajustes-content" class="p-6 space-y-8 hidden">
-                <div class="bg-gray-900 p-1 rounded-lg">
-                    <button class="w-full py-2 px-4 rounded-md text-sm font-semibold bg-gray-700 text-white">Presets</button>
-                </div>
-                <section>
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-lg font-semibold text-gray-300">Servicios</h2>
-                        <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="servicios">+ Añadir</button>
-                    </div>
-                    <div id="ajustes-servicios-list" class="space-y-2"></div>
-                </section>
-                <section>
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-lg font-semibold text-gray-300">Profesionales</h2>
-                        <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="profesionales">+ Añadir</button>
-                    </div>
-                    <div id="ajustes-profesionales-list" class="space-y-2"></div>
-                </section>
-                <section>
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Comandas)</h2>
-                        <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePago">+ Añadir</button>
-                    </div>
-                    <div id="ajustes-medios-pago-list" class="space-y-2"></div>
-                </section>
-                <section>
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-lg font-semibold text-gray-300">Categorías de Gasto</h2>
-                        <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="categoriasGasto">+ Añadir</button>
-                    </div>
-                    <div id="ajustes-categorias-gasto-list" class="space-y-2"></div>
-                </section>
-                <section>
-                    <div class="flex justify-between items-center mb-3">
-                        <h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Admin)</h2>
-                        <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePagoAdmin">+ Añadir</button>
-                    </div>
-                    <div id="ajustes-medios-pago-admin-list" class="space-y-2"></div>
-                </section>
-            </div>
-        </main>
+    <!-- Pantalla de Login -->
+    <div id="login-screen" class="max-w-md mx-auto min-h-screen flex flex-col items-center justify-center p-6 space-y-6">
+        <img src="https://raw.githubusercontent.com/leandroidecba/HugoAmadeyApp/refs/heads/main/Hugo%20Amadey%20Logo_Transparente-V03.png" alt="Logo de la Empresa" class="w-48 h-auto">
+        <p class="text-gray-400 text-center">Selecciona tu rol para continuar</p>
+        <div class="w-full space-y-4">
+            <button id="login-admin-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl text-lg">Admin</button>
+            <button id="login-cajero-btn" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl text-lg">Cajero</button>
+        </div>
     </div>
 
-    <!-- Barra de Navegación Inferior -->
-    <footer class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#1E1E1E] border-t border-gray-700 grid grid-cols-5 items-center">
-        <button id="tab-dashboard-btn-bottom" class="bottom-nav-active flex flex-col items-center justify-center py-2">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-            <span class="text-xs mt-1">Dashboard</span>
-        </button>
-        <button id="tab-reportes-btn-bottom" class="bottom-nav-inactive flex flex-col items-center justify-center py-2">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            <span class="text-xs mt-1">Reportes</span>
-        </button>
-        <div class="flex justify-center">
-            <button id="fab" class="bg-white text-black rounded-full p-4 shadow-lg transform -translate-y-4 flex items-center justify-center">
-                <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
-            </button>
+    <!-- Contenedor Principal de la App -->
+    <div id="main-app" class="hidden">
+        <div id="app-container" class="max-w-md mx-auto min-h-screen flex flex-col">
+            
+            <!-- Contenido Principal -->
+            <main class="flex-grow overflow-y-auto custom-scrollbar pb-24">
+                <!-- SECCIÓN 1: DASHBOARD DEL DÍA -->
+                <div id="dashboard-content" class="p-6 space-y-6">
+                    <section id="start-day-card" class="bg-[#1E1E1E] p-4 rounded-xl flex items-center justify-between">
+                        <div><h2 class="font-semibold">Caja del Día</h2><p id="caja-status-text" class="text-sm text-gray-400">Aún no has iniciado la caja hoy.</p></div>
+                        <button id="iniciar-caja-btn" class="bg-white text-black text-sm font-bold py-2 px-4 rounded-lg">Iniciar Caja</button>
+                    </section>
+                    <section class="grid grid-cols-2 gap-4">
+                        <div id="dashboard-total-facturado-card" class="bg-[#1E1E1E] p-4 rounded-xl col-span-2"><h2 class="text-sm font-medium text-gray-400">TOTAL FACTURADO (SIN RECARGOS)</h2><p id="dashboard-total-ingresos" class="text-3xl font-semibold mt-2">$0</p></div>
+                        <div class="bg-[#1E1E1E] p-4 rounded-xl"><h2 class="text-sm font-medium text-gray-400">EN EFECTIVO</h2><p id="dashboard-ingresos-efectivo" class="text-2xl font-semibold mt-2">$0</p></div>
+                        <div class="bg-[#1E1E1E] p-4 rounded-xl"><h2 class="text-sm font-medium text-gray-400">EN DIGITAL</h2><p id="dashboard-ingresos-digital" class="text-2xl font-semibold mt-2">$0</p></div>
+                        <div class="bg-[#1E1E1E] p-4 rounded-xl col-span-2"><h2 class="text-sm font-medium text-gray-400">GASTOS OPERATIVOS</h2><p id="dashboard-gastos-operativos" class="text-2xl font-semibold mt-2 text-red-400">$0</p></div>
+                        <div class="bg-blue-900/50 border border-blue-700 p-4 rounded-xl col-span-2"><h2 class="text-sm font-medium text-blue-300">BALANCE DEL DÍA EN EFECTIVO</h2><p id="dashboard-balance" class="text-3xl font-bold mt-2">$0</p></div>
+                    </section>
+                </div>
+
+                <!-- SECCIÓN 2: VISOR DE REPORTES -->
+                <div id="reportes-content" class="p-6 space-y-6 hidden">
+                    <div class="space-y-4">
+                        <div id="report-type-selector" class="grid grid-cols-2 gap-2 bg-gray-900 p-1 rounded-lg">
+                            <button id="report-movimientos-btn" class="w-full py-2 px-4 rounded-md text-sm font-semibold bg-gray-700 text-white">Movimientos</button>
+                            <button id="report-comisiones-btn" class="w-full py-2 px-4 rounded-md text-sm font-semibold text-gray-400 hover:bg-gray-800">Comisiones</button>
+                        </div>
+                    </div>
+
+                    <!-- Vista de Movimientos -->
+                    <div id="movimientos-view">
+                        <button id="date-selector-btn" class="w-full bg-gray-800 p-3 rounded-lg text-lg font-semibold text-center hover:bg-gray-700 transition-colors">
+                            Seleccionar fecha
+                        </button>
+                        <div id="details-container" class="space-y-6 mt-6">
+                            <section>
+                                <h3 class="text-lg font-semibold text-gray-300">Ingresos por Comanda</h3>
+                                <div id="comanda-details-list" class="space-y-3 mt-2"></div>
+                            </section>
+                            <section>
+                                <h3 class="text-lg font-semibold text-gray-300">Gastos Operativos</h3>
+                                <div id="gastos-operativos-list" class="space-y-3 mt-2"></div>
+                            </section>
+                            <section id="admin-gastos-section">
+                                <h3 class="text-lg font-semibold text-gray-300">Gastos Administrativos</h3>
+                                <div id="gastos-administrativos-list" class="space-y-3 mt-2"></div>
+                            </section>
+                        </div>
+                        <div id="summary-container" class="bg-gray-800 p-4 rounded-lg space-y-3 mt-6">
+                             <h2 class="text-xl font-bold mb-2">Resumen del Día</h2>
+                             <div class="flex justify-between text-green-400"><span class="font-medium">Total Ingresos (sin recargos):</span><span id="summary-ingresos" class="font-semibold">$0</span></div>
+                             <div class="flex justify-between text-yellow-400"><span class="font-medium">Total Ingresos por Recargos:</span><span id="summary-recargos" class="font-semibold">$0</span></div>
+                             <div class="flex justify-between text-red-400"><span class="font-medium">Gastos Operativos:</span><span id="summary-gastos-op" class="font-semibold">-$0</span></div>
+                             <div id="summary-admin-gastos-row" class="flex justify-between text-red-400"><span class="font-medium">Gastos Administrativos:</span><span id="summary-gastos-admin" class="font-semibold">-$0</span></div>
+                             <hr class="border-gray-600">
+                             <div class="flex justify-between text-xl"><span class="font-bold">BALANCE OPERATIVO:</span><span id="summary-balance" class="font-bold">$0</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Vista de Comisiones -->
+                    <div id="comisiones-view" class="hidden space-y-6">
+                        <div class="bg-gray-800 p-4 rounded-lg space-y-4">
+                            <div class="flex items-center gap-2">
+                                <input type="date" id="comision-fecha-inicio" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
+                                <span class="text-gray-400">-</span>
+                                <input type="date" id="comision-fecha-fin" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <select id="comision-profesional-select" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm"><option>Seleccionar Profesional</option></select>
+                            <button id="generar-reporte-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Generar Reporte</button>
+                        </div>
+                        <div id="comision-reporte-container" class="hidden">
+                            <div class="table-container custom-scrollbar">
+                                <table id="comision-report-table" class="w-full text-sm text-left whitespace-nowrap">
+                                    <thead class="bg-gray-700 sticky top-0">
+                                        <tr>
+                                            <th class="p-2">Nº Com.</th>
+                                            <th class="p-2">Fecha</th>
+                                            <th class="p-2">Servicio/Producto</th>
+                                            <th class="p-2">Voucher</th>
+                                            <th class="p-2">%</th>
+                                            <th class="p-2 text-right">Facturado</th>
+                                            <th class="p-2 text-right">Comisión</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="comision-table-body" class="bg-gray-800">
+                                    </tbody>
+                                    <tfoot class="bg-gray-900 sticky bottom-0">
+                                        <tr>
+                                            <td colspan="5" class="p-2 font-bold">TOTALES</td>
+                                            <td id="comision-total-facturado" class="p-2 text-right font-bold">$0</td>
+                                            <td id="comision-total-comision" class="p-2 text-right font-bold text-green-400">$0</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <button id="exportar-pdf-btn" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Exportar PDF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 3: AJUSTES -->
+                <div id="ajustes-content" class="p-6 space-y-8 hidden">
+                    <div class="bg-gray-900 p-1 rounded-lg">
+                        <button class="w-full py-2 px-4 rounded-md text-sm font-semibold bg-gray-700 text-white">Presets</button>
+                    </div>
+                    <div id="ajustes-lists-container">
+                        <section>
+                            <div class="flex justify-between items-center mb-3">
+                                <h2 class="text-lg font-semibold text-gray-300">Servicios</h2>
+                                <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="servicios">+ Añadir</button>
+                            </div>
+                            <div id="ajustes-servicios-list" class="space-y-2"></div>
+                        </section>
+                        <section>
+                            <div class="flex justify-between items-center mb-3">
+                                <h2 class="text-lg font-semibold text-gray-300">Profesionales</h2>
+                                <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="profesionales">+ Añadir</button>
+                            </div>
+                            <div id="ajustes-profesionales-list" class="space-y-2"></div>
+                        </section>
+                        <section>
+                            <div class="flex justify-between items-center mb-3">
+                                <h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Comandas)</h2>
+                                <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePago">+ Añadir</button>
+                            </div>
+                            <div id="ajustes-medios-pago-list" class="space-y-2"></div>
+                        </section>
+                        <section>
+                            <div class="flex justify-between items-center mb-3">
+                                <h2 class="text-lg font-semibold text-gray-300">Categorías de Gasto</h2>
+                                <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="categoriasGasto">+ Añadir</button>
+                            </div>
+                            <div id="ajustes-categorias-gasto-list" class="space-y-2"></div>
+                        </section>
+                        <section>
+                            <div class="flex justify-between items-center mb-3">
+                                <h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Admin)</h2>
+                                <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePagoAdmin">+ Añadir</button>
+                            </div>
+                            <div id="ajustes-medios-pago-admin-list" class="space-y-2"></div>
+                        </section>
+                    </div>
+                </div>
+            </main>
         </div>
-        <button id="tab-ajustes-btn-bottom" class="bottom-nav-inactive flex flex-col items-center justify-center py-2">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            <span class="text-xs mt-1">Ajustes</span>
-        </button>
-        <button id="tab-salir-btn-bottom" class="bottom-nav-inactive flex flex-col items-center justify-center py-2">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-            <span class="text-xs mt-1">Salir</span>
-        </button>
-    </footer>
+
+        <!-- Barra de Navegación Inferior -->
+        <footer class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#1E1E1E] border-t border-gray-700 grid grid-cols-5 items-center">
+            <button id="tab-dashboard-btn-bottom" class="bottom-nav-active flex flex-col items-center justify-center py-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                <span class="text-xs mt-1">Dashboard</span>
+            </button>
+            <button id="tab-reportes-btn-bottom" class="bottom-nav-inactive flex flex-col items-center justify-center py-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                <span class="text-xs mt-1">Reportes</span>
+            </button>
+            <div class="flex justify-center">
+                <button id="fab" class="bg-white text-black rounded-full p-4 shadow-lg transform -translate-y-4 flex items-center justify-center">
+                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
+                </button>
+            </div>
+            <button id="tab-ajustes-btn-bottom" class="bottom-nav-inactive flex flex-col items-center justify-center py-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                <span class="text-xs mt-1">Ajustes</span>
+            </button>
+            <button id="tab-salir-btn-bottom" class="bottom-nav-inactive flex flex-col items-center justify-center py-2">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                <span class="text-xs mt-1">Salir</span>
+            </button>
+        </footer>
+    </div>
 
     <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-28 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white font-semibold z-[60]">
@@ -401,6 +416,10 @@
             const db = getFirestore(app);
 
             // --- SELECTORES DE ELEMENTOS ---
+            const loginScreen = document.getElementById('login-screen');
+            const mainApp = document.getElementById('main-app');
+            const loginAdminBtn = document.getElementById('login-admin-btn');
+            const loginCajeroBtn = document.getElementById('login-cajero-btn');
             const fab = document.getElementById('fab');
             const fabActionModal = document.getElementById('fab-action-modal');
             const closeFabModalBtn = document.getElementById('close-fab-modal-btn');
@@ -452,6 +471,7 @@
             const tabDashboardBtn = document.getElementById('tab-dashboard-btn-bottom');
             const tabReportesBtn = document.getElementById('tab-reportes-btn-bottom');
             const tabAjustesBtn = document.getElementById('tab-ajustes-btn-bottom');
+            const tabSalirBtn = document.getElementById('tab-salir-btn-bottom');
             const dashboardContent = document.getElementById('dashboard-content');
             const reportesContent = document.getElementById('reportes-content');
             const ajustesContent = document.getElementById('ajustes-content');
@@ -479,6 +499,7 @@
             let currentDate = new Date();
             let datesWithRecords = new Set();
             let currentEditingPreset = { type: null, id: null };
+            let currentUserRole = null;
             
             // --- FUNCIONES DE UTILIDAD ---
             function log(message) {
@@ -493,6 +514,91 @@
                 toastEl.classList.add('show');
                 setTimeout(() => { toastEl.classList.remove('show'); }, 3000);
             }
+
+            // --- LÓGICA DE LOGIN Y ROLES ---
+            function login(role) {
+                currentUserRole = role;
+                loginScreen.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+                applyRolePermissions();
+            }
+
+            function logout() {
+                currentUserRole = null;
+                mainApp.classList.add('hidden');
+                loginScreen.classList.remove('hidden');
+                switchTab('dashboard'); 
+            }
+
+            function applyRolePermissions() {
+                // Reset to default (admin view)
+                document.getElementById('dashboard-total-facturado-card').classList.remove('hidden');
+                document.getElementById('report-type-selector').classList.remove('hidden');
+                document.getElementById('date-selector-btn').classList.remove('hidden');
+                document.getElementById('admin-gastos-section').classList.remove('hidden');
+                document.getElementById('summary-admin-gastos-row').classList.remove('hidden');
+                document.getElementById('ajustes-content').innerHTML = `
+                    <div class="bg-gray-900 p-1 rounded-lg">
+                        <button class="w-full py-2 px-4 rounded-md text-sm font-semibold bg-gray-700 text-white">Presets</button>
+                    </div>
+                    <section>
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-lg font-semibold text-gray-300">Servicios</h2>
+                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="servicios">+ Añadir</button>
+                        </div>
+                        <div id="ajustes-servicios-list" class="space-y-2"></div>
+                    </section>
+                    <section>
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-lg font-semibold text-gray-300">Profesionales</h2>
+                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="profesionales">+ Añadir</button>
+                        </div>
+                        <div id="ajustes-profesionales-list" class="space-y-2"></div>
+                    </section>
+                    <section>
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Comandas)</h2>
+                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePago">+ Añadir</button>
+                        </div>
+                        <div id="ajustes-medios-pago-list" class="space-y-2"></div>
+                    </section>
+                    <section>
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-lg font-semibold text-gray-300">Categorías de Gasto</h2>
+                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="categoriasGasto">+ Añadir</button>
+                        </div>
+                        <div id="ajustes-categorias-gasto-list" class="space-y-2"></div>
+                    </section>
+                    <section>
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Admin)</h2>
+                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePagoAdmin">+ Añadir</button>
+                        </div>
+                        <div id="ajustes-medios-pago-admin-list" class="space-y-2"></div>
+                    </section>`;
+                renderAjustesContent();
+
+                if (currentUserRole === 'cajero') {
+                    // Dashboard restrictions
+                    document.getElementById('dashboard-total-facturado-card').classList.add('hidden');
+                    
+                    // Reportes restrictions
+                    document.getElementById('report-type-selector').classList.add('hidden');
+                    document.getElementById('date-selector-btn').classList.add('hidden');
+                    document.getElementById('admin-gastos-section').classList.add('hidden');
+                    document.getElementById('summary-admin-gastos-row').classList.add('hidden');
+                    const today = new Date().toISOString().slice(0, 10);
+                    fetchDetailsForDate(today);
+
+                    // Ajustes restrictions
+                    document.getElementById('ajustes-content').innerHTML = '<p class="p-6 text-center text-gray-500">No tienes permisos para ver esta sección.</p>';
+                }
+            }
+
+            loginAdminBtn.addEventListener('click', () => login('admin'));
+            loginCajeroBtn.addEventListener('click', () => login('cajero'));
+            tabSalirBtn.addEventListener('click', logout);
+
 
             // --- LÓGICA DE PESTAÑAS ---
             function switchTab(activeTab) {
@@ -541,9 +647,7 @@
                         getDocs(refs.profesionales), getDocs(refs.mediosDePago)
                     ]);
                     categoriasGastoCache = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    categoriaSelect.innerHTML = categoriasGastoCache.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
                     mediosDePagoAdminCache = mpAdminSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    medioPagoGastoSelect.innerHTML = mediosDePagoAdminCache.map(m => `<option value="${m.nombre}">${m.nombre}</option>`).join('');
                     serviciosCache = servSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     profesionalesCache = profSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     comisionProfesionalSelect.innerHTML = '<option value="">Seleccionar Profesional</option>' + profesionalesCache.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
@@ -580,9 +684,8 @@
                 const categoriasOperativas = categoriasGastoCache.filter(c => c.visibleParaCajero).map(c => c.nombre);
                 const mediosDigitales = mediosDePagoCache.filter(mp => mp.esDigital).map(mp => mp.nombre);
                 comandas.forEach(comanda => {
-                    const totalRecargos = (comanda.pagos || []).reduce((sum, pago) => sum + (pago.recargo || 0), 0);
-                    totalIngresos += (comanda.total || 0) - totalRecargos;
                     (comanda.pagos || []).forEach(pago => {
+                        totalIngresos += pago.monto;
                         if (mediosDigitales.includes(pago.metodo)) {
                             ingresosDigital += pago.monto;
                         } else if (pago.metodo === 'Efectivo') {
@@ -773,7 +876,16 @@
                 closeModal(fabActionModal); 
                 openModal(comandaModal); 
             });
-            actionNewGastoBtn.addEventListener('click', () => { closeModal(fabActionModal); openModal(gastoModal); });
+            actionNewGastoBtn.addEventListener('click', () => {
+                if (currentUserRole === 'cajero') {
+                    const categoriasOperativas = categoriasGastoCache.filter(c => c.visibleParaCajero);
+                    categoriaSelect.innerHTML = categoriasOperativas.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
+                } else {
+                    categoriaSelect.innerHTML = categoriasGastoCache.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
+                }
+                closeModal(fabActionModal); 
+                openModal(gastoModal); 
+            });
             closeGastoModalBtn.addEventListener('click', () => closeModal(gastoModal));
             closeComandaModalBtn.addEventListener('click', () => closeModal(comandaModal));
             closeCajaModalBtn.addEventListener('click', () => closeModal(cajaModal));
