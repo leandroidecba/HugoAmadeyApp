@@ -3,13 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hugo Amadey Admin App v0.7.6</title>
+    <title>Gestión Financiera Peluquería v0.7.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#121212"/>
-    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/leandroidecba/HugoAmadeyApp/main/logo-192.png">
-    
     <!-- Librerías para PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
@@ -420,7 +416,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- CONFIGURACIÓN DE FIREBASE ---
             const firebaseConfig = {
-                apiKey: "AIzaSyCwmEIoKSmng6XBVZVfJs_hzVFRUD7khHA", // <-- ¡REEMPLAZA ESTO!
+                apiKey: "AIzaSyCwmEIoKSmng6XBVZVfJs_hzVFRUD7khHA",
                 authDomain: "gestionventas-33738.firebaseapp.com",
                 projectId: "gestionventas-33738",
                 storageBucket: "gestionventas-33738.appspot.com",
@@ -544,8 +540,8 @@
 
             // --- LÓGICA DE PWA (INSTALACIÓN Y OFFLINE) ---
             const manifest = {
-                "name": "Gestión Financiera Peluquería",
-                "short_name": "Gestión",
+                "name": "Hugo Amadey Admin App",
+                "short_name": "Admin App",
                 "start_url": ".",
                 "display": "standalone",
                 "background_color": "#121212",
@@ -1031,8 +1027,22 @@
             // --- MANEJO DE EVENTOS (EVENT LISTENERS) ---
             fab.addEventListener('click', () => openModal(fabActionModal));
             closeFabModalBtn.addEventListener('click', () => closeModal(fabActionModal));
-            actionNewComandaBtn.addEventListener('click', () => {
+            actionNewComandaBtn.addEventListener('click', async () => {
                 resetComandaModal();
+
+                const comandasRef = collection(db, `artifacts/${appId}/public/data/comandas`);
+                const q = query(comandasRef, orderBy("numero", "desc"), limit(1));
+                const querySnapshot = await getDocs(q);
+                let nextComandaNumber = 1;
+                if (!querySnapshot.empty) {
+                    const lastComanda = querySnapshot.docs[0].data();
+                    const lastNumber = parseInt(lastComanda.numero, 10);
+                    if (!isNaN(lastNumber)) {
+                        nextComandaNumber = lastNumber + 1;
+                    }
+                }
+                document.getElementById('comanda-numero').value = nextComandaNumber;
+
                 comandaModalTitle.textContent = "Nueva Comanda";
                 saveComandaBtn.textContent = "Finalizar y Guardar";
                 deleteComandaFromEditBtn.classList.add('hidden');
