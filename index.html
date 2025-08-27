@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Financiera Peluquería v0.7.0</title>
+    <title>Gestión Financiera Peluquería v0.7.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Librerías para PDF -->
@@ -724,12 +724,16 @@
                         getDocs(refs.categoriasGasto), getDocs(refs.mediosDePagoAdmin), getDocs(refs.servicios),
                         getDocs(refs.profesionales), getDocs(refs.mediosDePago)
                     ]);
-                    categoriasGastoCache = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    mediosDePagoAdminCache = mpAdminSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    serviciosCache = servSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    profesionalesCache = profSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    categoriasGastoCache = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    mediosDePagoAdminCache = mpAdminSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    serviciosCache = servSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    profesionalesCache = profSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    mediosDePagoCache = mpSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+                    
+                    categoriaSelect.innerHTML = categoriasGastoCache.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
+                    medioPagoGastoSelect.innerHTML = mediosDePagoAdminCache.map(m => `<option value="${m.nombre}">${m.nombre}</option>`).join('');
                     comisionProfesionalSelect.innerHTML = '<option value="">Seleccionar Profesional</option>' + profesionalesCache.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
-                    mediosDePagoCache = mpSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
                     log(`Presets cargados: ${categoriasGastoCache.length} categorías, ${serviciosCache.length} servicios, etc.`);
                     renderAjustesContent();
                 } catch (error) {
