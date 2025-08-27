@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Financiera Peluquería v0.7.5</title>
+    <title>Hugo Amadey Admin App v0.7.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- PWA Meta Tags -->
@@ -1115,22 +1115,38 @@
             addProductBtn.addEventListener('click', () => document.getElementById('items-list').insertAdjacentHTML('beforeend', productoTemplate()));
             addOtherBtn.addEventListener('click', () => document.getElementById('items-list').insertAdjacentHTML('beforeend', otroTemplate()));
             addPaymentBtn.addEventListener('click', () => document.getElementById('payments-list').insertAdjacentHTML('beforeend', paymentTemplate()));
-            comandaModal.addEventListener('change', e => {
-                if (e.target.classList.contains('item-service-selector')) {
-                    const selectedOption = e.target.options[e.target.selectedIndex];
-                    if (selectedOption.dataset.price) {
-                        e.target.closest('.item-entry').querySelector('.price-input').value = selectedOption.dataset.price;
-                        calculateComandaTotals();
+            
+            comandaModal.addEventListener('input', (e) => {
+                if (e.target.classList.contains('item-service-search')) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const resultsContainer = e.target.nextElementSibling.nextElementSibling;
+                    if(searchTerm.length > 0) {
+                        const filteredServices = serviciosCache.filter(s => s.nombre.toLowerCase().includes(searchTerm));
+                        resultsContainer.innerHTML = filteredServices.map(s => `<div class="p-2 hover:bg-gray-500 cursor-pointer" data-id="${s.id}" data-price="${s.precio}">${s.nombre}</div>`).join('');
+                        resultsContainer.classList.remove('hidden');
+                    } else {
+                        resultsContainer.classList.add('hidden');
                     }
                 }
+                calculateComandaTotals();
             });
-            comandaModal.addEventListener('input', calculateComandaTotals);
-            comandaModal.addEventListener('click', e => {
+
+            comandaModal.addEventListener('click', (e) => {
+                if (e.target.closest('.search-results > div')) {
+                    const serviceDiv = e.target.closest('.search-results > div');
+                    const itemEntry = serviceDiv.closest('.item-entry');
+                    itemEntry.querySelector('.item-service-search').value = serviceDiv.textContent;
+                    itemEntry.querySelector('.item-service-id').value = serviceDiv.dataset.id;
+                    itemEntry.querySelector('.price-input').value = serviceDiv.dataset.price;
+                    serviceDiv.parentElement.classList.add('hidden');
+                    calculateComandaTotals();
+                }
                 if (e.target.closest('.remove-item-btn')) {
                     e.target.closest('.item-entry, .payment-item').remove();
                     calculateComandaTotals();
                 }
             });
+
             function calculateComandaTotals() {
                 let subtotal = 0;
                 document.querySelectorAll('#items-list .item-entry').forEach(item => {
