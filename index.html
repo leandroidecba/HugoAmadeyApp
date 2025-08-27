@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Financiera Peluquería v0.7.3</title>
+    <title>Gestión Financiera Peluquería v0.7.5</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#121212"/>
+    <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/leandroidecba/HugoAmadeyApp/main/logo-192.png">
+    
     <!-- Librerías para PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
@@ -76,6 +80,10 @@
              <button id="login-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-lg mt-4">Ingresar</button>
              <button id="back-to-role-selection" class="w-full mt-2 text-gray-400 text-sm">Volver</button>
         </div>
+         <button id="install-app-btn" class="hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl text-lg mt-4 flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            Instalar App
+        </button>
     </div>
 
     <!-- Contenedor Principal de la App -->
@@ -508,6 +516,7 @@
             const comisionTotalFacturado = document.getElementById('comision-total-facturado');
             const comisionTotalComision = document.getElementById('comision-total-comision');
             const exportarPdfBtn = document.getElementById('exportar-pdf-btn');
+            const installAppBtn = document.getElementById('install-app-btn');
 
             // --- ESTADO Y CACHÉ GLOBAL ---
             let mediosDePagoCache = [], serviciosCache = [], profesionalesCache = [], categoriasGastoCache = [], mediosDePagoAdminCache = [];
@@ -517,6 +526,7 @@
             let currentEditingPreset = { type: null, id: null };
             let currentUserRole = null;
             let selectedRoleForLogin = null;
+            let deferredInstallPrompt = null;
             
             // --- FUNCIONES DE UTILIDAD ---
             function log(message) {
@@ -531,6 +541,78 @@
                 toastEl.classList.add('show');
                 setTimeout(() => { toastEl.classList.remove('show'); }, 3000);
             }
+
+            // --- LÓGICA DE PWA (INSTALACIÓN Y OFFLINE) ---
+            const manifest = {
+                "name": "Gestión Financiera Peluquería",
+                "short_name": "Gestión",
+                "start_url": ".",
+                "display": "standalone",
+                "background_color": "#121212",
+                "theme_color": "#121212",
+                "icons": [
+                    { "src": "https://raw.githubusercontent.com/leandroidecba/HugoAmadeyApp/main/logo-192.png", "type": "image/png", "sizes": "192x192" },
+                    { "src": "https://raw.githubusercontent.com/leandroidecba/HugoAmadeyApp/main/logo-512.png", "type": "image/png", "sizes": "512x512" }
+                ]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+            const manifestURL = URL.createObjectURL(manifestBlob);
+            document.querySelector('head').insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestURL}">`);
+
+            const swCode = `
+                const CACHE_NAME = 'gestion-financiera-cache-v1';
+                const urlsToCache = [
+                    '/',
+                    './index.html' // Asumiendo que el archivo se llama así. Se cachea la URL base.
+                ];
+
+                self.addEventListener('install', event => {
+                    event.waitUntil(
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                console.log('Opened cache');
+                                return cache.addAll(urlsToCache);
+                            })
+                    );
+                });
+
+                self.addEventListener('fetch', event => {
+                    event.respondWith(
+                        caches.match(event.request)
+                            .then(response => {
+                                if (response) {
+                                    return response;
+                                }
+                                return fetch(event.request);
+                            }
+                        )
+                    );
+                });
+            `;
+            const swBlob = new Blob([swCode], { type: 'application/javascript' });
+            const swURL = URL.createObjectURL(swBlob);
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register(swURL)
+                    .then(registration => log('Service Worker registrado con éxito:', registration))
+                    .catch(error => log('Error en el registro del Service Worker:', error));
+            }
+
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredInstallPrompt = e;
+                installAppBtn.classList.remove('hidden');
+            });
+
+            installAppBtn.addEventListener('click', async () => {
+                if (deferredInstallPrompt) {
+                    deferredInstallPrompt.prompt();
+                    const { outcome } = await deferredInstallPrompt.userChoice;
+                    log(`User response to the install prompt: ${outcome}`);
+                    deferredInstallPrompt = null;
+                    installAppBtn.classList.add('hidden');
+                }
+            });
 
             // --- LÓGICA DE LOGIN Y ROLES ---
             async function hashPassword(password) {
@@ -1000,9 +1082,23 @@
             });
 
             const servicioTemplate = (item = {}) => {
-                const serviciosOptions = serviciosCache.map(s => `<option value="${s.id}" data-price="${s.precio}" ${s.id === item.servicioId ? 'selected' : ''}>${s.nombre}</option>`).join('');
                 const profesionalesOptions = profesionalesCache.map(p => `<option value="${p.id}" ${p.id === item.profesionalId ? 'selected' : ''}>${p.nombre}</option>`).join('');
-                return `<div class="item-entry bg-gray-800 p-3 rounded-lg space-y-2" data-type="servicio"><div class="grid grid-cols-2 gap-2"><select class="item-service-selector w-full bg-gray-700 rounded-md px-2 py-2 text-sm"><option value="">Seleccionar servicio</option>${serviciosOptions}</select><select class="item-profesional-selector w-full bg-gray-700 rounded-md px-2 py-2 text-sm"><option value="">Selec. profesional</option>${profesionalesOptions}</select></div><div class="flex items-center gap-2"><div class="relative flex-grow"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 text-sm">$</span><input type="number" value="${item.precio || 0}" class="price-input w-full bg-gray-700 rounded-md pl-6 pr-2 py-2 text-sm"></div><div class="relative"><input type="number" placeholder="Dto" value="${item.descuento || ''}" class="discount-input w-16 bg-gray-700 rounded-md pl-2 pr-6 py-2 text-sm"><span class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 text-sm">%</span></div><button class="remove-item-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div><div class="flex items-center"><input type="checkbox" ${item.isVoucher ? 'checked' : ''} class="item-voucher-check h-4 w-4 rounded bg-gray-700 border-gray-600"><label class="ml-2 text-sm text-gray-300">Voucher</label></div></div>`;
+                return `<div class="item-entry bg-gray-800 p-3 rounded-lg space-y-2" data-type="servicio">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="relative">
+                                    <input type="text" class="item-service-search w-full bg-gray-700 rounded-md px-2 py-2 text-sm" placeholder="Buscar servicio..." value="${item.servicioNombre || ''}">
+                                    <input type="hidden" class="item-service-id" value="${item.servicioId || ''}">
+                                    <div class="search-results absolute z-10 w-full bg-gray-600 rounded-b-md hidden custom-scrollbar"></div>
+                                </div>
+                                <select class="item-profesional-selector w-full bg-gray-700 rounded-md px-2 py-2 text-sm"><option value="">Selec. profesional</option>${profesionalesOptions}</select>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="relative flex-grow"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 text-sm">$</span><input type="number" value="${item.precio || 0}" class="price-input w-full bg-gray-700 rounded-md pl-6 pr-2 py-2 text-sm"></div>
+                                <div class="relative"><input type="number" placeholder="Dto" value="${item.descuento || ''}" class="discount-input w-16 bg-gray-700 rounded-md pl-2 pr-6 py-2 text-sm"><span class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 text-sm">%</span></div>
+                                <button class="remove-item-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                            </div>
+                            <div class="flex items-center"><input type="checkbox" ${item.isVoucher ? 'checked' : ''} class="item-voucher-check h-4 w-4 rounded bg-gray-700 border-gray-600"><label class="ml-2 text-sm text-gray-300">Voucher</label></div>
+                        </div>`;
             };
              const productoTemplate = (item = {}) => {
                 const profesionalesOptions = profesionalesCache.map(p => `<option value="${p.id}" ${p.id === item.profesionalId ? 'selected' : ''}>${p.nombre}</option>`).join('');
@@ -1142,7 +1238,7 @@
                     };
 
                     if (type === 'servicio') {
-                        const servicioId = itemEl.querySelector('.item-service-selector').value;
+                        const servicioId = itemEl.querySelector('.item-service-id').value;
                         const servicio = serviciosCache.find(s => s.id === servicioId);
                         itemData.servicioId = servicioId;
                         itemData.servicioNombre = servicio?.nombre ?? 'Desconocido';
