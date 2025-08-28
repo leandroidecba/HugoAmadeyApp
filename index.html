@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hugo Amadey Admin App v0.8.1.1</title>
+    <title>Hugo Amadey Admin App v0.8.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- PWA Meta Tags -->
@@ -294,12 +294,10 @@
                     <label class="text-sm font-medium text-gray-400">Medio de Pago (Administración)</label>
                     <select id="gasto-medio-pago" class="w-full bg-gray-700 rounded-lg px-3 py-2 mt-1" required><option>Cargando...</option></select>
                 </div>
-                <!-- INICIO: Nuevo Checkbox "De Caja" -->
                 <div id="gasto-de-caja-container" class="hidden flex items-center space-x-2 pt-2">
                     <input type="checkbox" id="gasto-de-caja-checkbox" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500">
                     <label for="gasto-de-caja-checkbox" class="text-sm font-medium text-gray-300">Computar en el balance de caja (De Caja)</label>
                 </div>
-                <!-- FIN: Nuevo Checkbox "De Caja" -->
                 <input type="number" id="gasto-monto" placeholder="Monto" class="w-full bg-gray-800 rounded-lg px-3 py-2" required>
             </form>
             <footer class="p-4 border-t border-gray-700 bg-[#121212]">
@@ -333,7 +331,21 @@
                     <div id="items-list" class="space-y-3"></div>
                 </section>
                 <hr class="border-gray-700">
-                <section><div class="flex justify-between items-center mb-3"><h3 class="font-semibold">Checkout</h3><button id="add-payment-btn" class="text-sm bg-gray-600 px-3 py-1 rounded-md">+ Añadir Pago</button></div><div id="payments-list" class="space-y-3"></div></section>
+                <!-- INICIO: Sección de Checkout Modificada -->
+                <section>
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-semibold">Checkout</h3>
+                        <div class="flex gap-2">
+                           <button id="add-discount-btn" class="text-sm bg-orange-600 px-3 py-1 rounded-md">+ Descuento</button>
+                           <button id="add-payment-btn" class="text-sm bg-gray-600 px-3 py-1 rounded-md">+ Añadir Pago</button>
+                        </div>
+                    </div>
+                    <div id="discount-container" class="hidden space-y-2 mb-3">
+                        <!-- El input de descuento se inyectará aquí -->
+                    </div>
+                    <div id="payments-list" class="space-y-3"></div>
+                </section>
+                <!-- FIN: Sección de Checkout Modificada -->
             </div>
             <footer class="flex-shrink-0 p-4 border-t border-gray-700 bg-[#121212] space-y-2">
                 <div id="summary-list" class="space-y-1"></div>
@@ -501,6 +513,10 @@
             const addProductBtn = document.getElementById('add-product-btn');
             const addOtherBtn = document.getElementById('add-other-btn');
             const addPaymentBtn = document.getElementById('add-payment-btn');
+            // INICIO: Selectores para descuento
+            const addDiscountBtn = document.getElementById('add-discount-btn');
+            const discountContainer = document.getElementById('discount-container');
+            // FIN: Selectores para descuento
             const toastEl = document.getElementById('toast');
             const cajaModal = document.getElementById('caja-modal');
             const iniciarCajaBtn = document.getElementById('iniciar-caja-btn');
@@ -605,7 +621,7 @@
                 const CACHE_NAME = 'gestion-financiera-cache-v1';
                 const urlsToCache = [
                     '/',
-                    './index.html' // Asumiendo que el archivo se llama así. Se cachea la URL base.
+                    './index.html'
                 ];
 
                 self.addEventListener('install', event => {
@@ -735,7 +751,6 @@
             }
 
             function applyRolePermissions() {
-                // Reset to default (admin view)
                 document.getElementById('dashboard-total-facturado-card').classList.remove('hidden');
                 document.getElementById('report-type-selector').classList.remove('hidden');
                 document.getElementById('date-selector-btn').classList.remove('hidden');
@@ -783,18 +798,13 @@
                 renderAjustesContent();
 
                 if (currentUserRole === 'cajero') {
-                    // Dashboard restrictions
                     document.getElementById('dashboard-total-facturado-card').classList.add('hidden');
-                    
-                    // Reportes restrictions
                     document.getElementById('report-type-selector').classList.add('hidden');
                     document.getElementById('date-selector-btn').classList.add('hidden');
                     document.getElementById('admin-gastos-section').classList.add('hidden');
                     document.getElementById('summary-admin-gastos-row').classList.add('hidden');
                     const today = new Date().toISOString().slice(0, 10);
                     fetchDetailsForDate(today);
-
-                    // Ajustes restrictions
                     document.getElementById('ajustes-content').innerHTML = '<p class="p-6 text-center text-gray-500">No tienes permisos para ver esta sección.</p>';
                 }
             }
@@ -905,19 +915,13 @@
                     });
                 });
 
-                // --- INICIO: LÓGICA DE GASTOS CORREGIDA ---
                 const allGastos = movimientos.filter(m => m.type === 'gasto');
-
-                // Calcula el total de gastos operativos para la tarjeta "GASTOS OPERATIVOS"
                 gastosOperativos = allGastos
                     .filter(gasto => categoriasOperativas.includes(gasto.categoria))
                     .reduce((sum, gasto) => sum + gasto.amount, 0);
-
-                // Calcula el total de gastos pagados desde la caja para el "BALANCE DEL DÍA EN EFECTIVO"
                 gastosDeCaja = allGastos
                     .filter(gasto => gasto.deCaja === true)
                     .reduce((sum, gasto) => sum + gasto.amount, 0);
-                // --- FIN: LÓGICA DE GASTOS CORREGIDA ---
                 
                 const balance = aperturaCaja + ingresosEfectivo - gastosDeCaja - totalRetiros;
 
@@ -1075,7 +1079,7 @@
             function openComandaDetailModal(id, comanda) {
                 document.getElementById('detail-comanda-id').value = id;
                 detailModalTitle.textContent = `Detalle Comanda #${comanda.numero || 'N/A'}`;
-                let itemsHTML = comanda.items.map(item => `<div class="bg-gray-700 p-2 rounded-md"><div class="flex justify-between font-medium"><span>${item.servicioNombre}</span><span>$${item.precio.toLocaleString('es-AR')}</span></div><div class="text-xs text-gray-400"><span>Profesional: ${item.profesionalNombre}</span>${item.descuento > 0 ? `<span> - Dto: ${item.descuento}%</span>` : ''}</div></div>`).join('');
+                let itemsHTML = comanda.items.map(item => `<div class="bg-gray-700 p-2 rounded-md"><div class="flex justify-between font-medium"><span>${item.servicioNombre}</span><span>$${item.precio.toLocaleString('es-AR')}</span></div><div class="text-xs text-gray-400"><span>Profesional: ${item.profesionalNombre}</span></div></div>`).join('');
                 let pagosHTML = comanda.pagos.map(pago => `<div class="bg-gray-700 p-2 rounded-md"><div class="flex justify-between font-medium"><span>${pago.metodo}</span><span class="text-green-400">$${pago.monto.toLocaleString('es-AR')}</span></div>${pago.recargo > 0 ? `<div class="text-xs text-yellow-400">Recargo: $${pago.recargo.toLocaleString('es-AR')}</div>` : ''}</div>`).join('');
                 detailModalBody.innerHTML = `<div class="space-y-2"><p><span class="font-semibold text-gray-400">Cliente:</span> ${comanda.cliente || 'No especificado'}</p><p><span class="font-semibold text-gray-400">Fecha:</span> ${comanda.fecha} - ${comanda.hora}hs</p></div><hr class="border-gray-600"><div><h3 class="font-semibold mb-2">Conceptos</h3><div class="space-y-2">${itemsHTML}</div></div><div><h3 class="font-semibold mb-2">Pagos</h3><div class="space-y-2">${pagosHTML}</div></div><hr class="border-gray-600"><div class="flex justify-between text-lg font-bold"><span>TOTAL:</span><span>$${comanda.total.toLocaleString('es-AR')}</span></div>`;
                 openModal(comandaDetailModal);
@@ -1179,6 +1183,7 @@
                 }
             });
 
+            // --- INICIO: Templates y Lógica de Comanda Modificados ---
             const servicioTemplate = (item = {}) => {
                 const profesionalesOptions = profesionalesCache.map(p => `<option value="${p.id}" ${p.id === item.profesionalId ? 'selected' : ''}>${p.nombre}</option>`).join('');
                 return `<div class="item-entry bg-gray-800 p-3 rounded-lg space-y-2" data-type="servicio">
@@ -1192,7 +1197,6 @@
                             </div>
                             <div class="flex items-center gap-2">
                                 <div class="relative flex-grow"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 text-sm">$</span><input type="number" value="${item.precio || 0}" class="price-input w-full bg-gray-700 rounded-md pl-6 pr-2 py-2 text-sm"></div>
-                                <div class="relative"><input type="number" placeholder="Dto" value="${item.descuento || ''}" class="discount-input w-16 bg-gray-700 rounded-md pl-2 pr-6 py-2 text-sm"><span class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 text-sm">%</span></div>
                                 <button class="remove-item-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                             </div>
                             <div class="flex items-center"><input type="checkbox" ${item.isVoucher ? 'checked' : ''} class="item-voucher-check h-4 w-4 rounded bg-gray-700 border-gray-600"><label class="ml-2 text-sm text-gray-300">Voucher</label></div>
@@ -1200,19 +1204,39 @@
             };
              const productoTemplate = (item = {}) => {
                 const profesionalesOptions = profesionalesCache.map(p => `<option value="${p.id}" ${p.id === item.profesionalId ? 'selected' : ''}>${p.nombre}</option>`).join('');
-                return `<div class="item-entry bg-gray-800 p-3 rounded-lg space-y-2" data-type="producto"><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nombre del Producto" value="${item.servicioNombre || ''}" class="item-name-input w-full bg-gray-700 rounded-md px-2 py-2 text-sm"><select class="item-profesional-selector w-full bg-gray-700 rounded-md px-2 py-2 text-sm"><option value="">Selec. profesional</option>${profesionalesOptions}</select></div><div class="flex items-center gap-2"><div class="relative flex-grow"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 text-sm">$</span><input type="number" value="${item.precio || 0}" class="price-input w-full bg-gray-700 rounded-md pl-6 pr-2 py-2 text-sm"></div><div class="relative"><input type="number" placeholder="Dto" value="${item.descuento || ''}" class="discount-input w-16 bg-gray-700 rounded-md pl-2 pr-6 py-2 text-sm"><span class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 text-sm">%</span></div><button class="remove-item-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div></div>`;
+                return `<div class="item-entry bg-gray-800 p-3 rounded-lg space-y-2" data-type="producto"><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Nombre del Producto" value="${item.servicioNombre || ''}" class="item-name-input w-full bg-gray-700 rounded-md px-2 py-2 text-sm"><select class="item-profesional-selector w-full bg-gray-700 rounded-md px-2 py-2 text-sm"><option value="">Selec. profesional</option>${profesionalesOptions}</select></div><div class="flex items-center gap-2"><div class="relative flex-grow"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 text-sm">$</span><input type="number" value="${item.precio || 0}" class="price-input w-full bg-gray-700 rounded-md pl-6 pr-2 py-2 text-sm"></div><button class="remove-item-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div></div>`;
             };
             const otroTemplate = (item = {}) => {
-                return `<div class="item-entry bg-gray-800 p-3 rounded-lg space-y-2" data-type="otro"><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Concepto" value="${item.servicioNombre || ''}" class="item-name-input w-full bg-gray-700 rounded-md px-2 py-2 text-sm col-span-2"></div><div class="flex items-center gap-2"><div class="relative flex-grow"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 text-sm">$</span><input type="number" value="${item.precio || 0}" class="price-input w-full bg-gray-700 rounded-md pl-6 pr-2 py-2 text-sm"></div><div class="relative"><input type="number" placeholder="Dto" value="${item.descuento || ''}" class="discount-input w-16 bg-gray-700 rounded-md pl-2 pr-6 py-2 text-sm"><span class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400 text-sm">%</span></div><button class="remove-item-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div></div>`;
+                return `<div class="item-entry bg-gray-800 p-3 rounded-lg space-y-2" data-type="otro"><div class="grid grid-cols-2 gap-2"><input type="text" placeholder="Concepto" value="${item.servicioNombre || ''}" class="item-name-input w-full bg-gray-700 rounded-md px-2 py-2 text-sm col-span-2"></div><div class="flex items-center gap-2"><div class="relative flex-grow"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 text-sm">$</span><input type="number" value="${item.precio || 0}" class="price-input w-full bg-gray-700 rounded-md pl-6 pr-2 py-2 text-sm"></div><button class="remove-item-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div></div>`;
             };
             const paymentTemplate = (pago = {}) => {
                 const paymentOptions = mediosDePagoCache.map(p => `<option value="${p.nombre}" ${p.nombre === pago.metodo ? 'selected' : ''}>${p.nombre}</option>`).join('');
                 return `<div class="payment-item bg-gray-800 p-3 rounded-lg space-y-2"><div class="flex items-center gap-2"><select class="payment-method-selector w-full bg-gray-700 rounded-md px-2 py-2 text-sm"><option value="">Seleccionar Medio de pago</option>${paymentOptions}</select><div class="relative flex-grow"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400 text-sm">$</span><input type="number" placeholder="0" value="${pago.monto || ''}" class="payment-amount-input w-full bg-gray-700 rounded-md pl-6 pr-2 py-2 text-sm"></div><button class="remove-item-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div><div class="flex items-center justify-end gap-2 text-xs"><label class="text-gray-400">Recargo:</label><div class="relative"><span class="absolute inset-y-0 left-0 pl-2 flex items-center text-gray-400">$</span><input type="number" placeholder="Monto" value="${pago.recargo || ''}" class="surcharge-amount-input w-20 bg-gray-700 rounded-md pl-5 pr-1 py-1"></div><div class="relative"><input type="number" placeholder="%" class="surcharge-percent-input w-16 bg-gray-700 rounded-md pl-2 pr-5 py-1"><span class="absolute inset-y-0 right-0 pr-2 flex items-center text-gray-400">%</span></div></div></div>`;
             };
+            const discountTemplate = (discount = {}) => {
+                return `<div class="discount-item bg-gray-800 p-3 rounded-lg space-y-2">
+                    <div class="flex items-center gap-2">
+                        <select class="discount-type-selector w-full bg-gray-700 rounded-md px-2 py-2 text-sm">
+                            <option value="percentage" ${discount.type === 'percentage' ? 'selected' : ''}>Porcentaje (%)</option>
+                            <option value="amount" ${discount.type === 'amount' ? 'selected' : ''}>Monto Fijo ($)</option>
+                        </select>
+                        <div class="relative flex-grow">
+                            <input type="number" placeholder="0" value="${discount.value || ''}" class="discount-value-input w-full bg-gray-700 rounded-md px-2 py-2 text-sm">
+                        </div>
+                        <button class="remove-discount-btn text-gray-500 hover:text-red-500"><svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                    </div>
+                </div>`;
+            };
+
             addServiceBtn.addEventListener('click', () => document.getElementById('items-list').insertAdjacentHTML('beforeend', servicioTemplate()));
             addProductBtn.addEventListener('click', () => document.getElementById('items-list').insertAdjacentHTML('beforeend', productoTemplate()));
             addOtherBtn.addEventListener('click', () => document.getElementById('items-list').insertAdjacentHTML('beforeend', otroTemplate()));
             addPaymentBtn.addEventListener('click', () => document.getElementById('payments-list').insertAdjacentHTML('beforeend', paymentTemplate()));
+            addDiscountBtn.addEventListener('click', () => {
+                discountContainer.innerHTML = discountTemplate();
+                discountContainer.classList.remove('hidden');
+                addDiscountBtn.classList.add('hidden');
+            });
             
             comandaModal.addEventListener('input', (e) => {
                 if (e.target.classList.contains('item-service-search')) {
@@ -1243,15 +1267,35 @@
                     e.target.closest('.item-entry, .payment-item').remove();
                     calculateComandaTotals();
                 }
+                if (e.target.closest('.remove-discount-btn')) {
+                    e.target.closest('.discount-item').remove();
+                    addDiscountBtn.classList.remove('hidden');
+                    discountContainer.classList.add('hidden');
+                    calculateComandaTotals();
+                }
             });
 
             function calculateComandaTotals() {
                 let subtotal = 0;
                 document.querySelectorAll('#items-list .item-entry').forEach(item => {
                     const price = parseFloat(item.querySelector('.price-input').value) || 0;
-                    const discount = parseFloat(item.querySelector('.discount-input').value) || 0;
-                    subtotal += price * (1 - discount / 100);
+                    subtotal += price;
                 });
+
+                let discountAmount = 0;
+                const discountItem = document.querySelector('#discount-container .discount-item');
+                if (discountItem) {
+                    const type = discountItem.querySelector('.discount-type-selector').value;
+                    const value = parseFloat(discountItem.querySelector('.discount-value-input').value) || 0;
+                    if (type === 'percentage') {
+                        discountAmount = subtotal * (value / 100);
+                    } else {
+                        discountAmount = value;
+                    }
+                }
+
+                const totalAfterDiscount = subtotal - discountAmount;
+
                 let totalPaid = 0, totalSurcharges = 0, paymentSummaryHTML = '';
                 document.querySelectorAll('#payments-list .payment-item').forEach(item => {
                     const baseAmount = parseFloat(item.querySelector('.payment-amount-input').value) || 0;
@@ -1273,11 +1317,19 @@
                     const paymentMethod = item.querySelector('.payment-method-selector').value;
                     paymentSummaryHTML += `<div class="flex justify-between text-sm text-gray-300"><span>Pago (${paymentMethod}):</span><span class="text-green-400">$${totalTransactionAmount.toLocaleString('es-AR')}</span></div>`;
                 });
-                const finalComandaTotal = subtotal + totalSurcharges;
+                
+                const finalComandaTotal = totalAfterDiscount + totalSurcharges;
                 const remaining = finalComandaTotal - totalPaid;
+
                 let summaryHTML = `<div class="flex justify-between text-sm text-gray-300"><span>Subtotal:</span><span>$${subtotal.toLocaleString('es-AR')}</span></div>`;
-                if (totalSurcharges > 0) summaryHTML += `<div class="flex justify-between text-sm text-yellow-400"><span>Recargos:</span><span>+ $${totalSurcharges.toLocaleString('es-AR')}</span></div>`;
+                if (discountAmount > 0) {
+                    summaryHTML += `<div class="flex justify-between text-sm text-orange-400"><span>Descuento:</span><span>- $${discountAmount.toLocaleString('es-AR')}</span></div>`;
+                }
+                if (totalSurcharges > 0) {
+                    summaryHTML += `<div class="flex justify-between text-sm text-yellow-400"><span>Recargos:</span><span>+ $${totalSurcharges.toLocaleString('es-AR')}</span></div>`;
+                }
                 summaryHTML += `<hr class="border-gray-700 my-1"><div class="flex justify-between text-lg"><span class="font-medium">Total:</span><span class="font-semibold">$${finalComandaTotal.toLocaleString('es-AR')}</span></div>`;
+                
                 document.getElementById('summary-list').innerHTML = summaryHTML;
                 document.getElementById('payment-summary-list').innerHTML = paymentSummaryHTML;
                 const remainingEl = document.getElementById('comanda-remaining');
@@ -1293,6 +1345,9 @@
                 document.getElementById('comanda-cliente').value = '';
                 document.getElementById('items-list').innerHTML = '';
                 document.getElementById('payments-list').innerHTML = '';
+                discountContainer.innerHTML = '';
+                discountContainer.classList.add('hidden');
+                addDiscountBtn.classList.remove('hidden');
                 calculateComandaTotals();
             }
 
@@ -1308,10 +1363,26 @@
                 
                 let subtotal = 0;
                 document.querySelectorAll('#items-list .item-entry').forEach(item => {
-                    const price = parseFloat(item.querySelector('.price-input').value) || 0;
-                    const discount = parseFloat(item.querySelector('.discount-input').value) || 0;
-                    subtotal += price * (1 - discount / 100);
+                    subtotal += parseFloat(item.querySelector('.price-input').value) || 0;
                 });
+
+                let discount = null;
+                let discountAmount = 0;
+                const discountItem = document.querySelector('#discount-container .discount-item');
+                if (discountItem) {
+                    const type = discountItem.querySelector('.discount-type-selector').value;
+                    const value = parseFloat(discountItem.querySelector('.discount-value-input').value) || 0;
+                    if (value > 0) {
+                        discount = { type, value };
+                        if (type === 'percentage') {
+                            discountAmount = subtotal * (value / 100);
+                        } else {
+                            discountAmount = value;
+                        }
+                    }
+                }
+                const totalAfterDiscount = subtotal - discountAmount;
+                
                 let totalPaid = 0, totalSurcharges = 0;
                 document.querySelectorAll('#payments-list .payment-item').forEach(item => {
                     const baseAmount = parseFloat(item.querySelector('.payment-amount-input').value) || 0;
@@ -1326,7 +1397,8 @@
                     totalSurcharges += surchargeForThisPayment;
                     totalPaid += baseAmount + surchargeForThisPayment;
                 });
-                const finalComandaTotal = subtotal + totalSurcharges;
+
+                const finalComandaTotal = totalAfterDiscount + totalSurcharges;
                 const remaining = finalComandaTotal - totalPaid;
 
                 if (remaining > 0.01) {
@@ -1334,20 +1406,17 @@
                     return;
                 }
 
-
                 const items = Array.from(document.querySelectorAll('#items-list .item-entry')).map(itemEl => {
                     const type = itemEl.dataset.type;
                     const profesionalId = itemEl.querySelector('.item-profesional-selector')?.value;
                     const profesional = profesionalesCache.find(p => p.id === profesionalId);
                     const precio = parseFloat(itemEl.querySelector('.price-input').value) || 0;
-                    const descuento = parseFloat(itemEl.querySelector('.discount-input').value) || 0;
-
+                    
                     let itemData = {
                         type: type,
                         profesionalId: profesionalId || null,
                         profesionalNombre: profesional?.nombre ?? null,
-                        precio: precio,
-                        descuento: descuento
+                        precio: precio
                     };
 
                     if (type === 'servicio') {
@@ -1370,9 +1439,7 @@
                     return;
                 }
 
-                const pagos = [];
-                let totalComanda = 0;
-                document.querySelectorAll('#payments-list .payment-item').forEach(itemEl => {
+                const pagos = Array.from(document.querySelectorAll('#payments-list .payment-item')).map(itemEl => {
                     const baseAmount = parseFloat(itemEl.querySelector('.payment-amount-input').value) || 0;
                     let surcharge = 0;
                     const surchargeAmount = parseFloat(itemEl.querySelector('.surcharge-amount-input').value) || 0;
@@ -1382,17 +1449,17 @@
                     } else if (surchargePercent > 0) {
                         surcharge = baseAmount * (surchargePercent / 100);
                     }
-                    totalComanda += baseAmount + surcharge;
-                    pagos.push({ metodo: itemEl.querySelector('.payment-method-selector').value, monto: baseAmount, recargo: surcharge });
+                    return { metodo: itemEl.querySelector('.payment-method-selector').value, monto: baseAmount, recargo: surcharge };
                 });
                 
+                const comandaData = {
+                    numero: comandaNumero, cliente, items, pagos, discount, total: finalComandaTotal
+                };
+
                 try {
                     if (id) {
-                        const comandaData = {
-                            numero: comandaNumero, cliente, items, pagos, total: totalComanda,
-                            fecha: document.getElementById('comanda-original-fecha').value,
-                            hora: document.getElementById('comanda-original-hora').value,
-                        };
+                        comandaData.fecha = document.getElementById('comanda-original-fecha').value;
+                        comandaData.hora = document.getElementById('comanda-original-hora').value;
                         const comandaRef = doc(db, `artifacts/${appId}/public/data/comandas`, id);
                         await updateDoc(comandaRef, comandaData);
                         
@@ -1403,21 +1470,19 @@
                             const movimientoRef = doc(db, `artifacts/${appId}/public/data/movimientos`, movimientoDoc.id);
                             await updateDoc(movimientoRef, {
                                 concept: `Comanda #${comandaNumero || 'N/A'}`,
-                                amount: totalComanda,
+                                amount: finalComandaTotal,
                             });
                         }
                         showToast('Comanda actualizada con éxito.');
 
                     } else {
                         const now = new Date();
-                        const comandaData = {
-                            numero: comandaNumero, cliente, items, pagos, total: totalComanda,
-                            fecha: now.toISOString().slice(0, 10),
-                            hora: now.toTimeString().slice(0, 5),
-                            createdAt: serverTimestamp()
-                        };
+                        comandaData.fecha = now.toISOString().slice(0, 10);
+                        comandaData.hora = now.toTimeString().slice(0, 5);
+                        comandaData.createdAt = serverTimestamp();
+                        
                         const comandaRef = await addDoc(collection(db, `artifacts/${appId}/public/data/comandas`), comandaData);
-                        const newMovimiento = { type: 'ingreso', concept: `Comanda #${comandaNumero || 'N/A'}`, amount: totalComanda, comandaId: comandaRef.id, date: comandaData.fecha, time: comandaData.hora, createdAt: serverTimestamp() };
+                        const newMovimiento = { type: 'ingreso', concept: `Comanda #${comandaNumero || 'N/A'}`, amount: finalComandaTotal, comandaId: comandaRef.id, date: comandaData.fecha, time: comandaData.hora, createdAt: serverTimestamp() };
                         await addDoc(collection(db, `artifacts/${appId}/public/data/movimientos`), newMovimiento);
                         showToast('Comanda guardada con éxito.');
                     }
@@ -1428,6 +1493,8 @@
                     showToast('Error al guardar la comanda.', true);
                 }
             });
+            // --- FIN: Templates y Lógica de Comanda Modificados ---
+
             saveCajaBtn.addEventListener('click', async () => {
                 const monto = parseFloat(cajaInicialInput.value);
                 if(isNaN(monto) || monto < 0) { showToast("Ingresa un monto válido.", true); return; }
@@ -1467,6 +1534,13 @@
                     });
                     const paymentsList = document.getElementById('payments-list');
                     (comanda.pagos || []).forEach(pago => paymentsList.insertAdjacentHTML('beforeend', paymentTemplate(pago)));
+                    
+                    if (comanda.discount && comanda.discount.value > 0) {
+                        discountContainer.innerHTML = discountTemplate(comanda.discount);
+                        discountContainer.classList.remove('hidden');
+                        addDiscountBtn.classList.add('hidden');
+                    }
+
                     calculateComandaTotals();
                     comandaModalTitle.textContent = `Editando Comanda #${comanda.numero || ''}`;
                     saveComandaBtn.textContent = "Guardar Cambios";
@@ -1721,7 +1795,7 @@
 
                                 if(categoriaComision){
                                     const porcentaje = profesionalSeleccionado.comisiones?.[categoriaComision] || 0;
-                                    const facturado = item.precio * (1 - (item.descuento || 0) / 100);
+                                    const facturado = item.precio; // El descuento general no afecta la base de comision
                                     const comision = facturado * (porcentaje / 100);
 
                                     totalFacturado += facturado;
@@ -1837,7 +1911,7 @@
                     await addDoc(collection(db, `artifacts/${appId}/public/data/movimientos`), newRetiro);
                     showToast('Retiro guardado correctamente.');
                     retiroMontoInput.value = '';
-                    retirarDineroBtn.click(); // Refresh list
+                    retirarDineroBtn.click();
                 } catch(error) {
                     log(`Error al guardar retiro: ${error.message}`);
                     showToast('No se pudo guardar el retiro.', true);
@@ -1850,7 +1924,7 @@
                     try {
                         await deleteDoc(doc(db, `artifacts/${appId}/public/data/movimientos`, retiroId));
                         showToast('Retiro eliminado.');
-                        retirarDineroBtn.click(); // Refresh list
+                        retirarDineroBtn.click();
                     } catch (error) {
                         log(`Error al eliminar retiro: ${error.message}`);
                         showToast('No se pudo eliminar el retiro.', true);
@@ -1862,4 +1936,3 @@
     </script>
 </body>
 </html>
-
