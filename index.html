@@ -55,6 +55,10 @@
             max-height: 40vh;
             overflow: auto;
         }
+        .search-results {
+            max-height: 150px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body class="bg-[#121212] text-white antialiased">
@@ -1031,17 +1035,17 @@
                 resetComandaModal();
 
                 const comandasRef = collection(db, `artifacts/${appId}/public/data/comandas`);
-                const q = query(comandasRef, orderBy("numero", "desc"), limit(1));
+                const q = query(comandasRef);
                 const querySnapshot = await getDocs(q);
-                let nextComandaNumber = 1;
-                if (!querySnapshot.empty) {
-                    const lastComanda = querySnapshot.docs[0].data();
-                    const lastNumber = parseInt(lastComanda.numero, 10);
-                    if (!isNaN(lastNumber)) {
-                        nextComandaNumber = lastNumber + 1;
+                let maxComandaNumber = 0;
+                querySnapshot.forEach((doc) => {
+                    const comanda = doc.data();
+                    const comandaNumber = parseInt(comanda.numero, 10);
+                    if (!isNaN(comandaNumber) && comandaNumber > maxComandaNumber) {
+                        maxComandaNumber = comandaNumber;
                     }
-                }
-                document.getElementById('comanda-numero').value = nextComandaNumber;
+                });
+                document.getElementById('comanda-numero').value = maxComandaNumber + 1;
 
                 comandaModalTitle.textContent = "Nueva Comanda";
                 saveComandaBtn.textContent = "Finalizar y Guardar";
