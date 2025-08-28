@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hugo Amadey Admin App v0.8.0</title>
+    <title>Hugo Amadey Admin App v0.8.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- PWA Meta Tags -->
@@ -489,10 +489,8 @@
             const gastoForm = document.getElementById('gasto-form');
             const categoriaSelect = document.getElementById('gasto-categoria');
             const medioPagoGastoSelect = document.getElementById('gasto-medio-pago');
-            // INICIO: Selectores para la nueva funcionalidad de Gasto
             const deCajaContainer = document.getElementById('gasto-de-caja-container');
             const deCajaCheckbox = document.getElementById('gasto-de-caja-checkbox');
-            // FIN: Selectores para la nueva funcionalidad de Gasto
             const comandaModal = document.getElementById('comanda-modal');
             const comandaModalTitle = document.getElementById('comanda-modal-title');
             const comandaIdInput = document.getElementById('comanda-id');
@@ -882,9 +880,7 @@
 
             function updateDashboard(comandas, movimientos){
                 let totalIngresos = 0, ingresosEfectivo = 0, ingresosDigital = 0, gastosOperativos = 0, aperturaCaja = 0, totalRetiros = 0;
-                // INICIO: Nueva variable para gastos que afectan el balance de caja
                 let gastosDeCaja = 0;
-                // FIN: Nueva variable para gastos que afectan el balance de caja
 
                 const aperturaDoc = movimientos.find(m => m.type === 'apertura');
                 if (aperturaDoc) {
@@ -908,26 +904,27 @@
                         }
                     });
                 });
-                movimientos.filter(m => m.type === 'gasto').forEach(gasto => {
-                    if(categoriasOperativas.includes(gasto.categoria)) {
-                        gastosOperativos += gasto.amount;
-                        // INICIO: Lógica para sumar a gastos de caja
-                        // Solo los gastos marcados como "deCaja" se restan del balance de efectivo
-                        if (gasto.deCaja) {
-                            gastosDeCaja += gasto.amount;
-                        }
-                        // FIN: Lógica para sumar a gastos de caja
-                    }
-                });
+
+                // --- INICIO: LÓGICA DE GASTOS CORREGIDA ---
+                const allGastos = movimientos.filter(m => m.type === 'gasto');
+
+                // Calcula el total de gastos operativos para la tarjeta "GASTOS OPERATIVOS"
+                gastosOperativos = allGastos
+                    .filter(gasto => categoriasOperativas.includes(gasto.categoria))
+                    .reduce((sum, gasto) => sum + gasto.amount, 0);
+
+                // Calcula el total de gastos pagados desde la caja para el "BALANCE DEL DÍA EN EFECTIVO"
+                gastosDeCaja = allGastos
+                    .filter(gasto => gasto.deCaja === true)
+                    .reduce((sum, gasto) => sum + gasto.amount, 0);
+                // --- FIN: LÓGICA DE GASTOS CORREGIDA ---
                 
-                // INICIO: Cálculo de balance actualizado
                 const balance = aperturaCaja + ingresosEfectivo - gastosDeCaja - totalRetiros;
-                // FIN: Cálculo de balance actualizado
 
                 document.getElementById('dashboard-total-ingresos').textContent = `$${totalIngresos.toLocaleString('es-AR')}`;
                 document.getElementById('dashboard-ingresos-efectivo').textContent = `$${ingresosEfectivo.toLocaleString('es-AR')}`;
                 document.getElementById('dashboard-ingresos-digital').textContent = `$${ingresosDigital.toLocaleString('es-AR')}`;
-                document.getElementById('dashboard-gastos-operativos').textContent = `-$${gastosOperativos.toLocaleString('es-AR')}`; // Este total no cambia
+                document.getElementById('dashboard-gastos-operativos').textContent = `-$${gastosOperativos.toLocaleString('es-AR')}`;
                 const balanceEl = document.getElementById('dashboard-balance');
                 balanceEl.textContent = `$${balance.toLocaleString('es-AR')}`;
                 balanceEl.classList.toggle('text-green-400', balance >= 0);
@@ -1125,11 +1122,9 @@
                     categoriaSelect.innerHTML = categoriasGastoCache.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
                 }
                 gastoForm.reset();
-                // INICIO: Lógica para default de Gasto en Efectivo
-                medioPagoGastoSelect.value = 'Efectivo'; // Establecer "Efectivo" como default
-                medioPagoGastoSelect.dispatchEvent(new Event('change')); // Disparar evento para mostrar checkbox
-                deCajaCheckbox.checked = true; // Marcar el checkbox por defecto
-                // FIN: Lógica para default de Gasto en Efectivo
+                medioPagoGastoSelect.value = 'Efectivo'; 
+                medioPagoGastoSelect.dispatchEvent(new Event('change'));
+                deCajaCheckbox.checked = true;
                 closeModal(fabActionModal); 
                 openModal(gastoModal); 
             });
@@ -1145,16 +1140,14 @@
             closeGastoDetailModalBtn.addEventListener('click', () => closeModal(gastoDetailModal));
             closePresetModalBtn.addEventListener('click', () => closeModal(presetEditModal));
             
-            // INICIO: Event listener para el select de medio de pago de gasto
             medioPagoGastoSelect.addEventListener('change', () => {
                 if (medioPagoGastoSelect.value.toLowerCase() === 'efectivo') {
                     deCajaContainer.classList.remove('hidden');
                 } else {
                     deCajaContainer.classList.add('hidden');
-                    deCajaCheckbox.checked = false; // Desmarcar si el medio de pago cambia
+                    deCajaCheckbox.checked = false;
                 }
             });
-            // FIN: Event listener para el select de medio de pago de gasto
             
             // --- LÓGICA DE GUARDADO Y ELIMINACIÓN ---
             saveGastoBtn.addEventListener('click', () => gastoForm.requestSubmit());
@@ -1163,7 +1156,6 @@
                 const concepto = document.getElementById('gasto-concepto').value, categoria = categoriaSelect.value, medioPago = medioPagoGastoSelect.value, monto = parseFloat(document.getElementById('gasto-monto').value);
                 if (!concepto || !categoria || !medioPago || isNaN(monto) || monto <= 0) { showToast("Por favor, completa todos los campos.", true); return; }
                 const now = new Date();
-                // INICIO: Añadir el campo "deCaja" al objeto del gasto
                 const esDeCaja = deCajaCheckbox.checked && !deCajaContainer.classList.contains('hidden');
                 const newGasto = { 
                     type: 'gasto', 
@@ -1171,12 +1163,11 @@
                     categoria, 
                     paymentMethod: medioPago, 
                     amount: monto, 
-                    deCaja: esDeCaja, // Nuevo campo
+                    deCaja: esDeCaja,
                     date: now.toISOString().slice(0, 10), 
                     time: now.toTimeString().slice(0, 5), 
                     createdAt: serverTimestamp() 
                 };
-                // FIN: Añadir el campo "deCaja" al objeto del gasto
                 try {
                     await addDoc(collection(db, `artifacts/${appId}/public/data/movimientos`), newGasto);
                     showToast('Gasto guardado correctamente.');
@@ -1315,7 +1306,6 @@
                     return;
                 }
                 
-                // Recalcular totales para validación
                 let subtotal = 0;
                 document.querySelectorAll('#items-list .item-entry').forEach(item => {
                     const price = parseFloat(item.querySelector('.price-input').value) || 0;
@@ -1339,7 +1329,7 @@
                 const finalComandaTotal = subtotal + totalSurcharges;
                 const remaining = finalComandaTotal - totalPaid;
 
-                if (remaining > 0.01) { // Usar un pequeño umbral para errores de punto flotante
+                if (remaining > 0.01) {
                     showToast('La comanda debe estar saldada para poder guardarla.', true);
                     return;
                 }
@@ -1369,7 +1359,7 @@
                     } else {
                         itemData.servicioNombre = itemEl.querySelector('.item-name-input').value;
                         if (type === 'producto') {
-                            itemData.categoria = 'P'; // Asignar categoría P a productos
+                            itemData.categoria = 'P';
                         }
                     }
                     return itemData;
@@ -1397,7 +1387,7 @@
                 });
                 
                 try {
-                    if (id) { // Editing existing comanda
+                    if (id) {
                         const comandaData = {
                             numero: comandaNumero, cliente, items, pagos, total: totalComanda,
                             fecha: document.getElementById('comanda-original-fecha').value,
@@ -1418,7 +1408,7 @@
                         }
                         showToast('Comanda actualizada con éxito.');
 
-                    } else { // Creating new comanda
+                    } else {
                         const now = new Date();
                         const comandaData = {
                             numero: comandaNumero, cliente, items, pagos, total: totalComanda,
@@ -1567,7 +1557,7 @@
                 }
                 if (addBtn) {
                     const { type } = addBtn.dataset;
-                    openPresetEditModal(type); // Sin ID para crear uno nuevo
+                    openPresetEditModal(type);
                 }
             });
 
@@ -1647,7 +1637,7 @@
                         showToast('Elemento actualizado con éxito.');
                     }
                     closeModal(presetEditModal);
-                    await loadAllPresets(); // Recargar todo para reflejar cambios
+                    await loadAllPresets();
                 } catch (error) {
                     log(`[ERROR] al guardar preset: ${error.message}`);
                     showToast('No se pudo guardar el elemento.', true);
