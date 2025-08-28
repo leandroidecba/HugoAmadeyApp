@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hugo Amadey Admin App v0.7.9</title>
+    <title>Hugo Amadey Admin App v0.8.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- PWA Meta Tags -->
@@ -294,6 +294,12 @@
                     <label class="text-sm font-medium text-gray-400">Medio de Pago (Administración)</label>
                     <select id="gasto-medio-pago" class="w-full bg-gray-700 rounded-lg px-3 py-2 mt-1" required><option>Cargando...</option></select>
                 </div>
+                <!-- INICIO: Nuevo Checkbox "De Caja" -->
+                <div id="gasto-de-caja-container" class="hidden flex items-center space-x-2 pt-2">
+                    <input type="checkbox" id="gasto-de-caja-checkbox" class="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-blue-500">
+                    <label for="gasto-de-caja-checkbox" class="text-sm font-medium text-gray-300">Computar en el balance de caja (De Caja)</label>
+                </div>
+                <!-- FIN: Nuevo Checkbox "De Caja" -->
                 <input type="number" id="gasto-monto" placeholder="Monto" class="w-full bg-gray-800 rounded-lg px-3 py-2" required>
             </form>
             <footer class="p-4 border-t border-gray-700 bg-[#121212]">
@@ -483,6 +489,10 @@
             const gastoForm = document.getElementById('gasto-form');
             const categoriaSelect = document.getElementById('gasto-categoria');
             const medioPagoGastoSelect = document.getElementById('gasto-medio-pago');
+            // INICIO: Selectores para la nueva funcionalidad de Gasto
+            const deCajaContainer = document.getElementById('gasto-de-caja-container');
+            const deCajaCheckbox = document.getElementById('gasto-de-caja-checkbox');
+            // FIN: Selectores para la nueva funcionalidad de Gasto
             const comandaModal = document.getElementById('comanda-modal');
             const comandaModalTitle = document.getElementById('comanda-modal-title');
             const comandaIdInput = document.getElementById('comanda-id');
@@ -872,6 +882,10 @@
 
             function updateDashboard(comandas, movimientos){
                 let totalIngresos = 0, ingresosEfectivo = 0, ingresosDigital = 0, gastosOperativos = 0, aperturaCaja = 0, totalRetiros = 0;
+                // INICIO: Nueva variable para gastos que afectan el balance de caja
+                let gastosDeCaja = 0;
+                // FIN: Nueva variable para gastos que afectan el balance de caja
+
                 const aperturaDoc = movimientos.find(m => m.type === 'apertura');
                 if (aperturaDoc) {
                     aperturaCaja = aperturaDoc.amount;
@@ -895,13 +909,25 @@
                     });
                 });
                 movimientos.filter(m => m.type === 'gasto').forEach(gasto => {
-                    if(categoriasOperativas.includes(gasto.categoria)) gastosOperativos += gasto.amount;
+                    if(categoriasOperativas.includes(gasto.categoria)) {
+                        gastosOperativos += gasto.amount;
+                        // INICIO: Lógica para sumar a gastos de caja
+                        // Solo los gastos marcados como "deCaja" se restan del balance de efectivo
+                        if (gasto.deCaja) {
+                            gastosDeCaja += gasto.amount;
+                        }
+                        // FIN: Lógica para sumar a gastos de caja
+                    }
                 });
-                const balance = aperturaCaja + ingresosEfectivo - gastosOperativos - totalRetiros;
+                
+                // INICIO: Cálculo de balance actualizado
+                const balance = aperturaCaja + ingresosEfectivo - gastosDeCaja - totalRetiros;
+                // FIN: Cálculo de balance actualizado
+
                 document.getElementById('dashboard-total-ingresos').textContent = `$${totalIngresos.toLocaleString('es-AR')}`;
                 document.getElementById('dashboard-ingresos-efectivo').textContent = `$${ingresosEfectivo.toLocaleString('es-AR')}`;
                 document.getElementById('dashboard-ingresos-digital').textContent = `$${ingresosDigital.toLocaleString('es-AR')}`;
-                document.getElementById('dashboard-gastos-operativos').textContent = `-$${gastosOperativos.toLocaleString('es-AR')}`;
+                document.getElementById('dashboard-gastos-operativos').textContent = `-$${gastosOperativos.toLocaleString('es-AR')}`; // Este total no cambia
                 const balanceEl = document.getElementById('dashboard-balance');
                 balanceEl.textContent = `$${balance.toLocaleString('es-AR')}`;
                 balanceEl.classList.toggle('text-green-400', balance >= 0);
@@ -1098,6 +1124,12 @@
                 } else {
                     categoriaSelect.innerHTML = categoriasGastoCache.map(c => `<option value="${c.nombre}">${c.nombre}</option>`).join('');
                 }
+                gastoForm.reset();
+                // INICIO: Lógica para default de Gasto en Efectivo
+                medioPagoGastoSelect.value = 'Efectivo'; // Establecer "Efectivo" como default
+                medioPagoGastoSelect.dispatchEvent(new Event('change')); // Disparar evento para mostrar checkbox
+                deCajaCheckbox.checked = true; // Marcar el checkbox por defecto
+                // FIN: Lógica para default de Gasto en Efectivo
                 closeModal(fabActionModal); 
                 openModal(gastoModal); 
             });
@@ -1113,6 +1145,17 @@
             closeGastoDetailModalBtn.addEventListener('click', () => closeModal(gastoDetailModal));
             closePresetModalBtn.addEventListener('click', () => closeModal(presetEditModal));
             
+            // INICIO: Event listener para el select de medio de pago de gasto
+            medioPagoGastoSelect.addEventListener('change', () => {
+                if (medioPagoGastoSelect.value.toLowerCase() === 'efectivo') {
+                    deCajaContainer.classList.remove('hidden');
+                } else {
+                    deCajaContainer.classList.add('hidden');
+                    deCajaCheckbox.checked = false; // Desmarcar si el medio de pago cambia
+                }
+            });
+            // FIN: Event listener para el select de medio de pago de gasto
+            
             // --- LÓGICA DE GUARDADO Y ELIMINACIÓN ---
             saveGastoBtn.addEventListener('click', () => gastoForm.requestSubmit());
             gastoForm.addEventListener('submit', async (e) => {
@@ -1120,7 +1163,20 @@
                 const concepto = document.getElementById('gasto-concepto').value, categoria = categoriaSelect.value, medioPago = medioPagoGastoSelect.value, monto = parseFloat(document.getElementById('gasto-monto').value);
                 if (!concepto || !categoria || !medioPago || isNaN(monto) || monto <= 0) { showToast("Por favor, completa todos los campos.", true); return; }
                 const now = new Date();
-                const newGasto = { type: 'gasto', concept: concepto, categoria, paymentMethod: medioPago, amount: monto, date: now.toISOString().slice(0, 10), time: now.toTimeString().slice(0, 5), createdAt: serverTimestamp() };
+                // INICIO: Añadir el campo "deCaja" al objeto del gasto
+                const esDeCaja = deCajaCheckbox.checked && !deCajaContainer.classList.contains('hidden');
+                const newGasto = { 
+                    type: 'gasto', 
+                    concept: concepto, 
+                    categoria, 
+                    paymentMethod: medioPago, 
+                    amount: monto, 
+                    deCaja: esDeCaja, // Nuevo campo
+                    date: now.toISOString().slice(0, 10), 
+                    time: now.toTimeString().slice(0, 5), 
+                    createdAt: serverTimestamp() 
+                };
+                // FIN: Añadir el campo "deCaja" al objeto del gasto
                 try {
                     await addDoc(collection(db, `artifacts/${appId}/public/data/movimientos`), newGasto);
                     showToast('Gasto guardado correctamente.');
