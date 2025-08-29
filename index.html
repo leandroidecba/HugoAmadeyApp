@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hugo Amadey Admin App v0.8.2</title>
+    <title>Hugo Amadey Admin App v0.8.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- PWA Meta Tags -->
@@ -331,21 +331,18 @@
                     <div id="items-list" class="space-y-3"></div>
                 </section>
                 <hr class="border-gray-700">
-                <!-- INICIO: Sección de Checkout Modificada -->
                 <section>
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-semibold">Checkout</h3>
                         <div class="flex gap-2">
-                           <button id="add-discount-btn" class="text-sm bg-orange-600 px-3 py-1 rounded-md">+ Descuento</button>
-                           <button id="add-payment-btn" class="text-sm bg-gray-600 px-3 py-1 rounded-md">+ Añadir Pago</button>
+                           <button id="add-discount-btn" class="text-sm bg-gray-600 px-3 py-1 rounded-md">+ Descuento</button>
+                           <button id="add-payment-btn" class="text-sm bg-orange-600 px-3 py-1 rounded-md">+ Añadir Pago</button>
                         </div>
                     </div>
                     <div id="discount-container" class="hidden space-y-2 mb-3">
-                        <!-- El input de descuento se inyectará aquí -->
                     </div>
                     <div id="payments-list" class="space-y-3"></div>
                 </section>
-                <!-- FIN: Sección de Checkout Modificada -->
             </div>
             <footer class="flex-shrink-0 p-4 border-t border-gray-700 bg-[#121212] space-y-2">
                 <div id="summary-list" class="space-y-1"></div>
@@ -513,10 +510,8 @@
             const addProductBtn = document.getElementById('add-product-btn');
             const addOtherBtn = document.getElementById('add-other-btn');
             const addPaymentBtn = document.getElementById('add-payment-btn');
-            // INICIO: Selectores para descuento
             const addDiscountBtn = document.getElementById('add-discount-btn');
             const discountContainer = document.getElementById('discount-container');
-            // FIN: Selectores para descuento
             const toastEl = document.getElementById('toast');
             const cajaModal = document.getElementById('caja-modal');
             const iniciarCajaBtn = document.getElementById('iniciar-caja-btn');
@@ -575,6 +570,9 @@
             const retirosList = document.getElementById('retiros-list');
             const retiroForm = document.getElementById('retiro-form');
             const retiroMontoInput = document.getElementById('retiro-monto');
+            // INICIO: Selector para el contenedor de scroll de la comanda
+            const comandaScrollableContent = comandaModal.querySelector('.custom-scrollbar');
+            // FIN: Selector para el contenedor de scroll de la comanda
 
             // --- ESTADO Y CACHÉ GLOBAL ---
             let mediosDePagoCache = [], serviciosCache = [], profesionalesCache = [], categoriasGastoCache = [], mediosDePagoAdminCache = [];
@@ -599,6 +597,13 @@
                 toastEl.classList.add('show');
                 setTimeout(() => { toastEl.classList.remove('show'); }, 3000);
             }
+            // INICIO: Función para hacer scroll automático
+            function scrollToBottom(element) {
+                setTimeout(() => {
+                    element.scrollTop = element.scrollHeight;
+                }, 100); 
+            }
+            // FIN: Función para hacer scroll automático
 
             // --- LÓGICA DE PWA (INSTALACIÓN Y OFFLINE) ---
             const manifest = {
@@ -1183,7 +1188,6 @@
                 }
             });
 
-            // --- INICIO: Templates y Lógica de Comanda Modificados ---
             const servicioTemplate = (item = {}) => {
                 const profesionalesOptions = profesionalesCache.map(p => `<option value="${p.id}" ${p.id === item.profesionalId ? 'selected' : ''}>${p.nombre}</option>`).join('');
                 return `<div class="item-entry bg-gray-800 p-3 rounded-lg space-y-2" data-type="servicio">
@@ -1228,14 +1232,27 @@
                 </div>`;
             };
 
-            addServiceBtn.addEventListener('click', () => document.getElementById('items-list').insertAdjacentHTML('beforeend', servicioTemplate()));
-            addProductBtn.addEventListener('click', () => document.getElementById('items-list').insertAdjacentHTML('beforeend', productoTemplate()));
-            addOtherBtn.addEventListener('click', () => document.getElementById('items-list').insertAdjacentHTML('beforeend', otroTemplate()));
-            addPaymentBtn.addEventListener('click', () => document.getElementById('payments-list').insertAdjacentHTML('beforeend', paymentTemplate()));
+            addServiceBtn.addEventListener('click', () => {
+                document.getElementById('items-list').insertAdjacentHTML('beforeend', servicioTemplate());
+                scrollToBottom(comandaScrollableContent);
+            });
+            addProductBtn.addEventListener('click', () => {
+                document.getElementById('items-list').insertAdjacentHTML('beforeend', productoTemplate());
+                scrollToBottom(comandaScrollableContent);
+            });
+            addOtherBtn.addEventListener('click', () => {
+                document.getElementById('items-list').insertAdjacentHTML('beforeend', otroTemplate());
+                scrollToBottom(comandaScrollableContent);
+            });
+            addPaymentBtn.addEventListener('click', () => {
+                document.getElementById('payments-list').insertAdjacentHTML('beforeend', paymentTemplate());
+                scrollToBottom(comandaScrollableContent);
+            });
             addDiscountBtn.addEventListener('click', () => {
                 discountContainer.innerHTML = discountTemplate();
                 discountContainer.classList.remove('hidden');
                 addDiscountBtn.classList.add('hidden');
+                scrollToBottom(comandaScrollableContent);
             });
             
             comandaModal.addEventListener('input', (e) => {
@@ -1493,7 +1510,6 @@
                     showToast('Error al guardar la comanda.', true);
                 }
             });
-            // --- FIN: Templates y Lógica de Comanda Modificados ---
 
             saveCajaBtn.addEventListener('click', async () => {
                 const monto = parseFloat(cajaInicialInput.value);
