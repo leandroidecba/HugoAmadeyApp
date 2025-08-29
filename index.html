@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hugo Amadey Admin App v0.8.3</title>
+    <title>Hugo Amadey Admin App v0.8.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- PWA Meta Tags -->
@@ -570,9 +570,7 @@
             const retirosList = document.getElementById('retiros-list');
             const retiroForm = document.getElementById('retiro-form');
             const retiroMontoInput = document.getElementById('retiro-monto');
-            // INICIO: Selector para el contenedor de scroll de la comanda
             const comandaScrollableContent = comandaModal.querySelector('.custom-scrollbar');
-            // FIN: Selector para el contenedor de scroll de la comanda
 
             // --- ESTADO Y CACHÉ GLOBAL ---
             let mediosDePagoCache = [], serviciosCache = [], profesionalesCache = [], categoriasGastoCache = [], mediosDePagoAdminCache = [];
@@ -597,13 +595,11 @@
                 toastEl.classList.add('show');
                 setTimeout(() => { toastEl.classList.remove('show'); }, 3000);
             }
-            // INICIO: Función para hacer scroll automático
             function scrollToBottom(element) {
                 setTimeout(() => {
                     element.scrollTop = element.scrollHeight;
                 }, 100); 
             }
-            // FIN: Función para hacer scroll automático
 
             // --- LÓGICA DE PWA (INSTALACIÓN Y OFFLINE) ---
             const manifest = {
@@ -833,7 +829,14 @@
             }
 
             tabDashboardBtn.addEventListener('click', () => switchTab('dashboard'));
-            tabReportesBtn.addEventListener('click', () => switchTab('reportes'));
+            // INICIO: Lógica de actualización de reportes
+            tabReportesBtn.addEventListener('click', () => {
+                switchTab('reportes');
+                const todayString = new Date().toISOString().slice(0, 10);
+                updateDateSelectorButton(todayString);
+                fetchDetailsForDate(todayString);
+            });
+            // FIN: Lógica de actualización de reportes
             tabAjustesBtn.addEventListener('click', () => switchTab('ajustes'));
 
             // --- INICIALIZACIÓN Y AUTENTICACIÓN ---
@@ -1505,6 +1508,10 @@
                     }
                     resetComandaModal();
                     closeModal(comandaModal);
+                    // INICIO: Lógica de actualización de reportes
+                    const todayString = new Date().toISOString().slice(0, 10);
+                    fetchDetailsForDate(todayString);
+                    // FIN: Lógica de actualización de reportes
                 } catch (error) {
                     log(`Error guardando comanda: ${error.message}`);
                     showToast('Error al guardar la comanda.', true);
@@ -1952,3 +1959,4 @@
     </script>
 </body>
 </html>
+
