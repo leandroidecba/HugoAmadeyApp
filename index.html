@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hugo Amadey Admin App v0.8.4</title>
+    <title>Hugo Amadey Admin App v0.11.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#121212"/>
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/leandroidecba/HugoAmadeyApp/main/logo-192.png">
     
-    <!-- Librerías para PDF -->
+    <!-- Librerías para Reportes -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; }
         .modal-container { visibility: hidden; opacity: 0; transition: visibility 0s 300ms, opacity 300ms ease-in-out; }
@@ -114,9 +115,10 @@
                 <!-- SECCIÓN 2: VISOR DE REPORTES -->
                 <div id="reportes-content" class="p-6 space-y-6 hidden">
                     <div class="space-y-4">
-                        <div id="report-type-selector" class="grid grid-cols-2 gap-2 bg-gray-900 p-1 rounded-lg">
+                        <div id="report-type-selector" class="grid grid-cols-3 gap-2 bg-gray-900 p-1 rounded-lg">
                             <button id="report-movimientos-btn" class="w-full py-2 px-4 rounded-md text-sm font-semibold bg-gray-700 text-white">Movimientos</button>
                             <button id="report-comisiones-btn" class="w-full py-2 px-4 rounded-md text-sm font-semibold text-gray-400 hover:bg-gray-800">Comisiones</button>
+                            <button id="report-finanzas-btn" class="w-full py-2 px-4 rounded-md text-sm font-semibold text-gray-400 hover:bg-gray-800">Finanzas</button>
                         </div>
                     </div>
 
@@ -159,7 +161,7 @@
                                 <input type="date" id="comision-fecha-fin" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
                             </div>
                             <select id="comision-profesional-select" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm"><option>Seleccionar Profesional</option></select>
-                            <button id="generar-reporte-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Generar Reporte</button>
+                            <button id="generar-reporte-comision-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Generar Reporte</button>
                         </div>
                         <div id="comision-reporte-container" class="hidden">
                             <div class="table-container custom-scrollbar">
@@ -186,9 +188,49 @@
                                     </tfoot>
                                 </table>
                             </div>
-                            <button id="exportar-pdf-btn" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Exportar PDF</button>
+                            <button id="exportar-pdf-comision-btn" class="w-full mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Exportar PDF</button>
                         </div>
                     </div>
+
+                    <!-- INICIO: Vista de Finanzas -->
+                    <div id="finanzas-view" class="hidden space-y-6">
+                        <div class="bg-gray-800 p-4 rounded-lg space-y-4">
+                            <div class="flex items-center gap-2">
+                                <input type="date" id="finanzas-fecha-inicio" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
+                                <span class="text-gray-400">-</span>
+                                <input type="date" id="finanzas-fecha-fin" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
+                            </div>
+                            <select id="finanzas-reporte-select" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
+                                <option value="detalleComandas">Detalle comandas</option>
+                                <option value="ventas">Ventas</option>
+                                <option value="gastos">Gastos</option>
+                                <option value="pagos">Pagos</option>
+                                <option value="resumenFinanciero" disabled>Resumen Financiero (próximamente)</option>
+                            </select>
+                            <button id="generar-reporte-finanzas-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Generar Reporte</button>
+                        </div>
+                        <div id="finanzas-reporte-container" class="hidden">
+                            <div class="table-container custom-scrollbar">
+                                <table id="finanzas-report-table" class="w-full text-sm text-left whitespace-nowrap">
+                                    <thead id="finanzas-table-head" class="bg-gray-700 sticky top-0">
+                                        <!-- Header se genera dinámicamente -->
+                                    </thead>
+                                    <tbody id="finanzas-table-body" class="bg-gray-800">
+                                        <!-- Body se genera dinámicamente -->
+                                    </tbody>
+                                    <tfoot id="finanzas-table-foot" class="bg-gray-900 sticky bottom-0">
+                                        <!-- Footer se genera dinámicamente -->
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <div class="mt-4 grid grid-cols-2 gap-4">
+                               <button id="exportar-pdf-finanzas-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Exportar PDF</button>
+                               <button id="exportar-xlsx-finanzas-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">Exportar XLSX</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- FIN: Vista de Finanzas -->
+
                 </div>
 
                 <!-- SECCIÓN 3: AJUSTES -->
@@ -552,17 +594,27 @@
             const presetModalBody = document.getElementById('preset-modal-body');
             const savePresetBtn = document.getElementById('save-preset-btn');
             const deletePresetBtn = document.getElementById('delete-preset-btn');
+            const reportTypeSelector = document.getElementById('report-type-selector');
             const reportMovimientosBtn = document.getElementById('report-movimientos-btn');
             const reportComisionesBtn = document.getElementById('report-comisiones-btn');
+            const reportFinanzasBtn = document.getElementById('report-finanzas-btn');
             const movimientosView = document.getElementById('movimientos-view');
             const comisionesView = document.getElementById('comisiones-view');
+            const finanzasView = document.getElementById('finanzas-view');
             const comisionProfesionalSelect = document.getElementById('comision-profesional-select');
-            const generarReporteBtn = document.getElementById('generar-reporte-btn');
+            const generarReporteComisionBtn = document.getElementById('generar-reporte-comision-btn');
             const comisionReporteContainer = document.getElementById('comision-reporte-container');
             const comisionTableBody = document.getElementById('comision-table-body');
             const comisionTotalFacturado = document.getElementById('comision-total-facturado');
             const comisionTotalComision = document.getElementById('comision-total-comision');
-            const exportarPdfBtn = document.getElementById('exportar-pdf-btn');
+            const exportarPdfComisionBtn = document.getElementById('exportar-pdf-comision-btn');
+            const generarReporteFinanzasBtn = document.getElementById('generar-reporte-finanzas-btn');
+            const finanzasReporteContainer = document.getElementById('finanzas-reporte-container');
+            const finanzasTableHead = document.getElementById('finanzas-table-head');
+            const finanzasTableBody = document.getElementById('finanzas-table-body');
+            const finanzasTableFoot = document.getElementById('finanzas-table-foot');
+            const exportarPdfFinanzasBtn = document.getElementById('exportar-pdf-finanzas-btn');
+            const exportarXlsxFinanzasBtn = document.getElementById('exportar-xlsx-finanzas-btn');
             const installAppBtn = document.getElementById('install-app-btn');
             const retirarDineroBtn = document.getElementById('retirar-dinero-btn');
             const retiroModal = document.getElementById('retiro-modal');
@@ -620,33 +672,9 @@
 
             const swCode = `
                 const CACHE_NAME = 'gestion-financiera-cache-v1';
-                const urlsToCache = [
-                    '/',
-                    './index.html'
-                ];
-
-                self.addEventListener('install', event => {
-                    event.waitUntil(
-                        caches.open(CACHE_NAME)
-                            .then(cache => {
-                                console.log('Opened cache');
-                                return cache.addAll(urlsToCache);
-                            })
-                    );
-                });
-
-                self.addEventListener('fetch', event => {
-                    event.respondWith(
-                        caches.match(event.request)
-                            .then(response => {
-                                if (response) {
-                                    return response;
-                                }
-                                return fetch(event.request);
-                            }
-                        )
-                    );
-                });
+                const urlsToCache = [ '/', './index.html' ];
+                self.addEventListener('install', event => { event.waitUntil( caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)) ); });
+                self.addEventListener('fetch', event => { event.respondWith( caches.match(event.request).then(response => response || fetch(event.request)) ); });
             `;
             const swBlob = new Blob([swCode], { type: 'application/javascript' });
             const swURL = URL.createObjectURL(swBlob);
@@ -679,38 +707,29 @@
                 const data = encoder.encode(password);
                 const hashBuffer = await crypto.subtle.digest('SHA-256', data);
                 const hashArray = Array.from(new Uint8Array(hashBuffer));
-                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-                return hashHex;
+                return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             }
 
             async function verifyLogin(role, password) {
                 loginError.textContent = '';
                 const enteredHash = await hashPassword(password);
-                
                 try {
                     const roleDocRef = doc(db, `artifacts/${appId}/public/data/roles`, role);
                     const roleDocSnap = await getDoc(roleDocRef);
 
-                    if (roleDocSnap.exists()) {
-                        const storedHash = roleDocSnap.data().passwordHash;
-                        if (enteredHash === storedHash) {
-                            currentUserRole = role;
-                            loginScreen.classList.add('hidden');
-                            mainApp.classList.remove('hidden');
-                            applyRolePermissions();
-                        } else {
-                            loginError.textContent = 'Contraseña incorrecta.';
-                        }
+                    if (roleDocSnap.exists() && enteredHash === roleDocSnap.data().passwordHash) {
+                        currentUserRole = role;
+                        loginScreen.classList.add('hidden');
+                        mainApp.classList.remove('hidden');
+                        applyRolePermissions();
                     } else {
-                        loginError.textContent = `No se encontró configuración para el rol '${role}'.`;
-                        log(`Error: Documento para el rol '${role}' no encontrado en la colección 'roles'.`);
+                        loginError.textContent = 'Contraseña incorrecta.';
                     }
                 } catch (error) {
                     log(`Error al verificar login: ${error.message}`);
                     loginError.textContent = 'Error al verificar. Intente de nuevo.';
                 }
             }
-
 
             function showPasswordScreen(role) {
                 selectedRoleForLogin = role;
@@ -731,17 +750,8 @@
             selectAdminBtn.addEventListener('click', () => showPasswordScreen('admin'));
             selectCajeroBtn.addEventListener('click', () => showPasswordScreen('cajero'));
             backToRoleSelectionBtn.addEventListener('click', showRoleSelectionScreen);
-            loginBtn.addEventListener('click', () => {
-                if (selectedRoleForLogin) {
-                    verifyLogin(selectedRoleForLogin, passwordInput.value);
-                }
-            });
-            passwordInput.addEventListener('keyup', (e) => {
-                if (e.key === 'Enter') {
-                    loginBtn.click();
-                }
-            });
-
+            loginBtn.addEventListener('click', () => { if (selectedRoleForLogin) verifyLogin(selectedRoleForLogin, passwordInput.value); });
+            passwordInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') loginBtn.click(); });
 
             function logout() {
                 currentUserRole = null;
@@ -752,55 +762,26 @@
             }
 
             function applyRolePermissions() {
+                // Reset to admin defaults first
+                reportFinanzasBtn.classList.remove('hidden');
+                reportTypeSelector.classList.replace('grid-cols-2', 'grid-cols-3');
                 document.getElementById('dashboard-total-facturado-card').classList.remove('hidden');
-                document.getElementById('report-type-selector').classList.remove('hidden');
                 document.getElementById('date-selector-btn').classList.remove('hidden');
                 document.getElementById('admin-gastos-section').classList.remove('hidden');
                 document.getElementById('summary-admin-gastos-row').classList.remove('hidden');
                 document.getElementById('ajustes-content').innerHTML = `
-                    <div class="bg-gray-900 p-1 rounded-lg">
-                        <button class="w-full py-2 px-4 rounded-md text-sm font-semibold bg-gray-700 text-white">Presets</button>
-                    </div>
-                    <section>
-                        <div class="flex justify-between items-center mb-3">
-                            <h2 class="text-lg font-semibold text-gray-300">Servicios</h2>
-                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="servicios">+ Añadir</button>
-                        </div>
-                        <div id="ajustes-servicios-list" class="space-y-2"></div>
-                    </section>
-                    <section>
-                        <div class="flex justify-between items-center mb-3">
-                            <h2 class="text-lg font-semibold text-gray-300">Profesionales</h2>
-                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="profesionales">+ Añadir</button>
-                        </div>
-                        <div id="ajustes-profesionales-list" class="space-y-2"></div>
-                    </section>
-                    <section>
-                        <div class="flex justify-between items-center mb-3">
-                            <h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Comandas)</h2>
-                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePago">+ Añadir</button>
-                        </div>
-                        <div id="ajustes-medios-pago-list" class="space-y-2"></div>
-                    </section>
-                    <section>
-                        <div class="flex justify-between items-center mb-3">
-                            <h2 class="text-lg font-semibold text-gray-300">Categorías de Gasto</h2>
-                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="categoriasGasto">+ Añadir</button>
-                        </div>
-                        <div id="ajustes-categorias-gasto-list" class="space-y-2"></div>
-                    </section>
-                    <section>
-                        <div class="flex justify-between items-center mb-3">
-                            <h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Admin)</h2>
-                            <button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePagoAdmin">+ Añadir</button>
-                        </div>
-                        <div id="ajustes-medios-pago-admin-list" class="space-y-2"></div>
-                    </section>`;
+                    <div class="bg-gray-900 p-1 rounded-lg"><button class="w-full py-2 px-4 rounded-md text-sm font-semibold bg-gray-700 text-white">Presets</button></div>
+                    <section><div class="flex justify-between items-center mb-3"><h2 class="text-lg font-semibold text-gray-300">Servicios</h2><button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="servicios">+ Añadir</button></div><div id="ajustes-servicios-list" class="space-y-2"></div></section>
+                    <section><div class="flex justify-between items-center mb-3"><h2 class="text-lg font-semibold text-gray-300">Profesionales</h2><button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="profesionales">+ Añadir</button></div><div id="ajustes-profesionales-list" class="space-y-2"></div></section>
+                    <section><div class="flex justify-between items-center mb-3"><h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Comandas)</h2><button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePago">+ Añadir</button></div><div id="ajustes-medios-pago-list" class="space-y-2"></div></section>
+                    <section><div class="flex justify-between items-center mb-3"><h2 class="text-lg font-semibold text-gray-300">Categorías de Gasto</h2><button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="categoriasGasto">+ Añadir</button></div><div id="ajustes-categorias-gasto-list" class="space-y-2"></div></section>
+                    <section><div class="flex justify-between items-center mb-3"><h2 class="text-lg font-semibold text-gray-300">Medios de Pago (Admin)</h2><button class="add-preset-btn text-sm bg-gray-600 px-3 py-1 rounded-md" data-type="mediosDePagoAdmin">+ Añadir</button></div><div id="ajustes-medios-pago-admin-list" class="space-y-2"></div></section>`;
                 renderAjustesContent();
 
                 if (currentUserRole === 'cajero') {
+                    reportFinanzasBtn.classList.add('hidden');
+                    reportTypeSelector.classList.replace('grid-cols-3', 'grid-cols-2');
                     document.getElementById('dashboard-total-facturado-card').classList.add('hidden');
-                    document.getElementById('report-type-selector').classList.add('hidden');
                     document.getElementById('date-selector-btn').classList.add('hidden');
                     document.getElementById('admin-gastos-section').classList.add('hidden');
                     document.getElementById('summary-admin-gastos-row').classList.add('hidden');
@@ -829,14 +810,12 @@
             }
 
             tabDashboardBtn.addEventListener('click', () => switchTab('dashboard'));
-            // INICIO: Lógica de actualización de reportes
             tabReportesBtn.addEventListener('click', () => {
                 switchTab('reportes');
                 const todayString = new Date().toISOString().slice(0, 10);
                 updateDateSelectorButton(todayString);
                 fetchDetailsForDate(todayString);
             });
-            // FIN: Lógica de actualización de reportes
             tabAjustesBtn.addEventListener('click', () => switchTab('ajustes'));
 
             // --- INICIALIZACIÓN Y AUTENTICACIÓN ---
@@ -1295,6 +1274,28 @@
                 }
             });
 
+            // CHANGE: Add focusout event listener to handle service input clearing
+            comandaModal.addEventListener('focusout', (e) => {
+                if (e.target.classList.contains('item-service-search')) {
+                    const itemEntry = e.target.closest('.item-entry');
+                    const serviceIdInput = itemEntry.querySelector('.item-service-id');
+                    const searchInput = e.target;
+                    const resultsContainer = itemEntry.querySelector('.search-results');
+
+                    // Small delay to allow click on results to register before hiding
+                    setTimeout(() => {
+                        resultsContainer.classList.add('hidden');
+                        
+                        // If after the delay, no valid service is selected (ID is empty), clear the input and the price.
+                        if (!serviceIdInput.value) {
+                            searchInput.value = '';
+                            itemEntry.querySelector('.price-input').value = ''; // Clear price
+                            calculateComandaTotals(); // Recalculate
+                        }
+                    }, 200); // 200ms delay to allow click to register
+                }
+            });
+
             function calculateComandaTotals() {
                 let subtotal = 0;
                 document.querySelectorAll('#items-list .item-entry').forEach(item => {
@@ -1381,6 +1382,37 @@
                     return;
                 }
                 
+                // --- VALIDATION BLOCK ---
+                let validationError = null;
+
+                const itemEntries = document.querySelectorAll('#items-list .item-entry');
+                if (itemEntries.length === 0) {
+                    validationError = 'La comanda debe tener al menos un concepto.';
+                } else {
+                    for (const [index, itemEl] of itemEntries.entries()) {
+                        if (itemEl.dataset.type === 'servicio' && !itemEl.querySelector('.item-service-id').value) {
+                            validationError = `Debes seleccionar un servicio de la lista para el concepto #${index + 1}.`;
+                            break;
+                        }
+                    }
+                }
+
+                if (!validationError) {
+                    const paymentEntries = document.querySelectorAll('#payments-list .payment-item');
+                    for (const [index, itemEl] of paymentEntries.entries()) {
+                        if (!itemEl.querySelector('.payment-method-selector').value) {
+                            validationError = `Debes seleccionar un medio de pago para el pago #${index + 1}.`;
+                            break;
+                        }
+                    }
+                }
+
+                if (validationError) {
+                    showToast(validationError, true);
+                    return;
+                }
+                // --- END VALIDATION BLOCK ---
+
                 let subtotal = 0;
                 document.querySelectorAll('#items-list .item-entry').forEach(item => {
                     subtotal += parseFloat(item.querySelector('.price-input').value) || 0;
@@ -1454,11 +1486,6 @@
                     return itemData;
                 });
 
-                if (items.length === 0) {
-                    showToast('La comanda debe tener al menos un concepto.', true);
-                    return;
-                }
-
                 const pagos = Array.from(document.querySelectorAll('#payments-list .payment-item')).map(itemEl => {
                     const baseAmount = parseFloat(itemEl.querySelector('.payment-amount-input').value) || 0;
                     let surcharge = 0;
@@ -1508,10 +1535,8 @@
                     }
                     resetComandaModal();
                     closeModal(comandaModal);
-                    // INICIO: Lógica de actualización de reportes
                     const todayString = new Date().toISOString().slice(0, 10);
                     fetchDetailsForDate(todayString);
-                    // FIN: Lógica de actualización de reportes
                 } catch (error) {
                     log(`Error guardando comanda: ${error.message}`);
                     showToast('Error al guardar la comanda.', true);
@@ -1755,25 +1780,30 @@
                 }
             });
 
-            reportMovimientosBtn.addEventListener('click', () => {
-                movimientosView.classList.remove('hidden');
-                comisionesView.classList.add('hidden');
-                reportMovimientosBtn.classList.add('bg-gray-700', 'text-white');
-                reportMovimientosBtn.classList.remove('text-gray-400', 'hover:bg-gray-800');
-                reportComisionesBtn.classList.add('text-gray-400', 'hover:bg-gray-800');
-                reportComisionesBtn.classList.remove('bg-gray-700', 'text-white');
-            });
+            // --- Lógica de Reportes (Comisiones y Finanzas) ---
+            function switchReportView(activeView) {
+                const views = {
+                    movimientos: { btn: reportMovimientosBtn, content: movimientosView },
+                    comisiones: { btn: reportComisionesBtn, content: comisionesView },
+                    finanzas: { btn: reportFinanzasBtn, content: finanzasView }
+                };
 
-            reportComisionesBtn.addEventListener('click', () => {
-                comisionesView.classList.remove('hidden');
-                movimientosView.classList.add('hidden');
-                reportComisionesBtn.classList.add('bg-gray-700', 'text-white');
-                reportComisionesBtn.classList.remove('text-gray-400', 'hover:bg-gray-800');
-                reportMovimientosBtn.classList.add('text-gray-400', 'hover:bg-gray-800');
-                reportMovimientosBtn.classList.remove('bg-gray-700', 'text-white');
-            });
+                for (const view of Object.values(views)) {
+                    view.content.classList.add('hidden');
+                    view.btn.classList.remove('bg-gray-700', 'text-white');
+                    view.btn.classList.add('text-gray-400', 'hover:bg-gray-800');
+                }
+
+                views[activeView].content.classList.remove('hidden');
+                views[activeView].btn.classList.add('bg-gray-700', 'text-white');
+                views[activeView].btn.classList.remove('text-gray-400', 'hover:bg-gray-800');
+            }
+
+            reportMovimientosBtn.addEventListener('click', () => switchReportView('movimientos'));
+            reportComisionesBtn.addEventListener('click', () => switchReportView('comisiones'));
+            reportFinanzasBtn.addEventListener('click', () => switchReportView('finanzas'));
             
-            generarReporteBtn.addEventListener('click', async () => {
+            generarReporteComisionBtn.addEventListener('click', async () => {
                 const fechaInicio = document.getElementById('comision-fecha-inicio').value;
                 const fechaFin = document.getElementById('comision-fecha-fin').value;
                 const profesionalId = comisionProfesionalSelect.value;
@@ -1785,8 +1815,7 @@
                 
                 const profesionalSeleccionado = profesionalesCache.find(p => p.id === profesionalId);
                 if (!profesionalSeleccionado) {
-                    showToast('Profesional no encontrado.', true);
-                    return;
+                    showToast('Profesional no encontrado.', true); return;
                 }
 
                 comisionTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">Generando reporte...</td></tr>`;
@@ -1806,33 +1835,20 @@
                             if (item.profesionalId === profesionalId) {
                                 let categoriaComision;
                                 if(item.type === 'servicio'){
-                                    if (item.isVoucher) {
-                                        categoriaComision = 'V';
-                                    } else {
-                                        const servicio = serviciosCache.find(s => s.id === item.servicioId);
-                                        categoriaComision = servicio?.categoria;
-                                    }
+                                    categoriaComision = item.isVoucher ? 'V' : serviciosCache.find(s => s.id === item.servicioId)?.categoria;
                                 } else if(item.type === 'producto'){
                                     categoriaComision = 'P';
                                 }
 
                                 if(categoriaComision){
                                     const porcentaje = profesionalSeleccionado.comisiones?.[categoriaComision] || 0;
-                                    const facturado = item.precio; // El descuento general no afecta la base de comision
+                                    const facturado = item.precio;
                                     const comision = facturado * (porcentaje / 100);
 
                                     totalFacturado += facturado;
                                     totalComision += comision;
 
-                                    reportData.push({
-                                        numero: comanda.numero,
-                                        fecha: comanda.fecha,
-                                        servicioNombre: item.servicioNombre,
-                                        isVoucher: item.isVoucher,
-                                        porcentaje,
-                                        facturado,
-                                        comision
-                                    });
+                                    reportData.push({ numero: comanda.numero, fecha: comanda.fecha, servicioNombre: item.servicioNombre, isVoucher: item.isVoucher, porcentaje, facturado, comision });
                                 }
                             }
                         });
@@ -1841,23 +1857,13 @@
                     reportData.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.numero.localeCompare(b.numero));
 
                     if (reportData.length === 0) {
-                        comisionTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No se encontraron servicios o productos para este profesional en el rango de fechas.</td></tr>`;
+                        comisionTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No se encontraron datos.</td></tr>`;
                         comisionTotalFacturado.textContent = '$0';
                         comisionTotalComision.textContent = '$0';
                         return;
                     }
 
-                    comisionTableBody.innerHTML = reportData.map(row => `
-                        <tr>
-                            <td class="p-2 border-t border-gray-700">${row.numero}</td>
-                            <td class="p-2 border-t border-gray-700">${row.fecha}</td>
-                            <td class="p-2 border-t border-gray-700">${row.servicioNombre}</td>
-                            <td class="p-2 border-t border-gray-700">${row.isVoucher ? 'Voucher' : ''}</td>
-                            <td class="p-2 border-t border-gray-700">${row.porcentaje}%</td>
-                            <td class="p-2 border-t border-gray-700 text-right">$${row.facturado.toLocaleString('es-AR')}</td>
-                            <td class="p-2 border-t border-gray-700 text-right text-green-400">$${row.comision.toLocaleString('es-AR')}</td>
-                        </tr>
-                    `).join('');
+                    comisionTableBody.innerHTML = reportData.map(row => `<tr><td class="p-2 border-t border-gray-700">${row.numero}</td><td class="p-2 border-t border-gray-700">${row.fecha}</td><td class="p-2 border-t border-gray-700">${row.servicioNombre}</td><td class="p-2 border-t border-gray-700">${row.isVoucher ? 'Voucher' : ''}</td><td class="p-2 border-t border-gray-700">${row.porcentaje}%</td><td class="p-2 border-t border-gray-700 text-right">$${row.facturado.toLocaleString('es-AR')}</td><td class="p-2 border-t border-gray-700 text-right text-green-400">$${row.comision.toLocaleString('es-AR')}</td></tr>`).join('');
 
                     comisionTotalFacturado.textContent = `$${totalFacturado.toLocaleString('es-AR')}`;
                     comisionTotalComision.textContent = `$${totalComision.toLocaleString('es-AR')}`;
@@ -1869,7 +1875,7 @@
                 }
             });
 
-            exportarPdfBtn.addEventListener('click', () => {
+            exportarPdfComisionBtn.addEventListener('click', () => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
@@ -1892,6 +1898,338 @@
                 doc.save(`comisiones_${profesionalSeleccionado?.nombre}_${fechaInicio}_${fechaFin}.pdf`);
             });
 
+            generarReporteFinanzasBtn.addEventListener('click', async () => {
+                const fechaInicio = document.getElementById('finanzas-fecha-inicio').value;
+                const fechaFin = document.getElementById('finanzas-fecha-fin').value;
+                const tipoReporte = document.getElementById('finanzas-reporte-select').value;
+                
+                if (!fechaInicio || !fechaFin) {
+                    showToast('Por favor, seleccione un rango de fechas.', true);
+                    return;
+                }
+
+                finanzasReporteContainer.classList.remove('hidden');
+                finanzasTableHead.innerHTML = '';
+                finanzasTableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-400">Generando reporte...</td></tr>`;
+                finanzasTableFoot.innerHTML = '';
+
+                switch (tipoReporte) {
+                    case 'detalleComandas':
+                        await generarReporteDetalleComandas(fechaInicio, fechaFin);
+                        break;
+                    case 'ventas':
+                        await generarReporteVentas(fechaInicio, fechaFin);
+                        break;
+                    case 'gastos':
+                        await generarReporteGastos(fechaInicio, fechaFin);
+                        break;
+                    case 'pagos':
+                        await generarReportePagos(fechaInicio, fechaFin);
+                        break;
+                    default:
+                        showToast('Este reporte aún no está disponible.');
+                        finanzasTableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-500">Reporte no disponible.</td></tr>`;
+                        break;
+                }
+            });
+
+            async function generarReporteDetalleComandas(fechaInicio, fechaFin) {
+                try {
+                    const q = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", fechaInicio), where("fecha", "<=", fechaFin));
+                    const comandasSnapshot = await getDocs(q);
+                    
+                    finanzasTableHead.innerHTML = `<tr>
+                        <th class="p-2">Nº Com.</th><th class="p-2">Fecha</th><th class="p-2">Cliente</th>
+                        <th class="p-2">Tipo</th><th class="p-2">Concepto</th><th class="p-2">Profesional</th>
+                        <th class="p-2">Voucher</th><th class="p-2 text-right">Importe</th>
+                    </tr>`;
+
+                    if (comandasSnapshot.empty) {
+                        finanzasTableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-gray-400">No se encontraron comandas.</td></tr>`;
+                        return;
+                    }
+                    
+                    let reportData = [];
+                    comandasSnapshot.forEach(doc => {
+                        const comanda = doc.data();
+                        (comanda.items || []).forEach(item => {
+                            reportData.push({
+                                numero: comanda.numero,
+                                fecha: comanda.fecha,
+                                cliente: comanda.cliente,
+                                tipo: item.type.charAt(0).toUpperCase() + item.type.slice(1),
+                                concepto: item.servicioNombre,
+                                profesional: item.profesionalNombre || '',
+                                voucher: item.type === 'servicio' && item.isVoucher ? 'Sí' : 'No',
+                                importe: item.precio || 0
+                            });
+                        });
+                    });
+
+                    reportData.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.numero.localeCompare(b.numero));
+                    
+                    let totalGeneral = 0;
+                    finanzasTableBody.innerHTML = reportData.map(row => {
+                        totalGeneral += row.importe;
+                        return `<tr>
+                            <td class="p-2 border-t border-gray-700">${row.numero}</td>
+                            <td class="p-2 border-t border-gray-700">${row.fecha}</td>
+                            <td class="p-2 border-t border-gray-700">${row.cliente}</td>
+                            <td class="p-2 border-t border-gray-700">${row.tipo}</td>
+                            <td class="p-2 border-t border-gray-700">${row.concepto}</td>
+                            <td class="p-2 border-t border-gray-700">${row.profesional}</td>
+                            <td class="p-2 border-t border-gray-700">${row.voucher}</td>
+                            <td class="p-2 border-t border-gray-700 text-right font-semibold">$${row.importe.toLocaleString('es-AR')}</td>
+                        </tr>`;
+                    }).join('');
+
+                    finanzasTableFoot.innerHTML = `<tr>
+                        <td colspan="7" class="p-2 font-bold">TOTAL GENERAL</td>
+                        <td class="p-2 text-right font-bold text-green-400">$${totalGeneral.toLocaleString('es-AR')}</td>
+                    </tr>`;
+
+                } catch (error) {
+                    log(`Error generando reporte detalle de comandas: ${error.message}`);
+                    showToast('No se pudo generar el reporte.', true);
+                    finanzasTableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-red-400">Error al cargar datos.</td></tr>`;
+                }
+            }
+
+            async function generarReporteVentas(fechaInicio, fechaFin) {
+                try {
+                    const q = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", fechaInicio), where("fecha", "<=", fechaFin));
+                    const comandasSnapshot = await getDocs(q);
+
+                    finanzasTableHead.innerHTML = `<tr>
+                        <th class="p-2">Nº Com.</th>
+                        <th class="p-2">Fecha</th>
+                        <th class="p-2">Cliente</th>
+                        <th class="p-2 text-right">Subtotal Items</th>
+                        <th class="p-2 text-right">Recargos</th>
+                        <th class="p-2 text-right">Descuentos</th>
+                        <th class="p-2 text-right">Total Pago</th>
+                    </tr>`;
+
+                    if (comandasSnapshot.empty) {
+                        finanzasTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No se encontraron ventas.</td></tr>`;
+                        return;
+                    }
+
+                    const comandasData = comandasSnapshot.docs.map(doc => doc.data()).sort((a,b) => a.fecha.localeCompare(b.fecha) || a.numero.localeCompare(b.numero));
+
+                    let totalItemsGeneral = 0;
+                    let totalRecargosGeneral = 0;
+                    let totalDescuentosGeneral = 0;
+                    let totalPagoGeneral = 0;
+
+                    finanzasTableBody.innerHTML = comandasData.map(comanda => {
+                        const subtotalItems = (comanda.items || []).reduce((sum, item) => sum + (item.precio || 0), 0);
+                        const totalRecargos = (comanda.pagos || []).reduce((sum, pago) => sum + (pago.recargo || 0), 0);
+                        
+                        let totalDescuento = 0;
+                        if (comanda.discount && comanda.discount.value > 0) {
+                            if (comanda.discount.type === 'percentage') {
+                                totalDescuento = subtotalItems * (comanda.discount.value / 100);
+                            } else {
+                                totalDescuento = comanda.discount.value;
+                            }
+                        }
+
+                        const totalPago = comanda.total || 0;
+
+                        totalItemsGeneral += subtotalItems;
+                        totalRecargosGeneral += totalRecargos;
+                        totalDescuentosGeneral += totalDescuento;
+                        totalPagoGeneral += totalPago;
+
+                        return `<tr>
+                            <td class="p-2 border-t border-gray-700">${comanda.numero}</td>
+                            <td class="p-2 border-t border-gray-700">${comanda.fecha}</td>
+                            <td class="p-2 border-t border-gray-700">${comanda.cliente}</td>
+                            <td class="p-2 border-t border-gray-700 text-right">$${subtotalItems.toLocaleString('es-AR')}</td>
+                            <td class="p-2 border-t border-gray-700 text-right text-yellow-400">$${totalRecargos.toLocaleString('es-AR')}</td>
+                            <td class="p-2 border-t border-gray-700 text-right text-orange-400">$${totalDescuento.toLocaleString('es-AR')}</td>
+                            <td class="p-2 border-t border-gray-700 text-right font-semibold">$${totalPago.toLocaleString('es-AR')}</td>
+                        </tr>`;
+                    }).join('');
+
+                    finanzasTableFoot.innerHTML = `<tr>
+                        <td colspan="3" class="p-2 font-bold">TOTALES</td>
+                        <td class="p-2 text-right font-bold">$${totalItemsGeneral.toLocaleString('es-AR')}</td>
+                        <td class="p-2 text-right font-bold text-yellow-400">$${totalRecargosGeneral.toLocaleString('es-AR')}</td>
+                        <td class="p-2 text-right font-bold text-orange-400">$${totalDescuentosGeneral.toLocaleString('es-AR')}</td>
+                        <td class="p-2 text-right font-bold text-green-400">$${totalPagoGeneral.toLocaleString('es-AR')}</td>
+                    </tr>`;
+
+                } catch (error) {
+                    log(`Error generando reporte de ventas: ${error.message}`);
+                    showToast('No se pudo generar el reporte de ventas.', true);
+                    finanzasTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">Error al cargar datos.</td></tr>`;
+                }
+            }
+            
+            async function generarReporteGastos(fechaInicio, fechaFin) {
+                try {
+                    const q = query(collection(db, `artifacts/${appId}/public/data/movimientos`), 
+                        where("type", "==", "gasto"),
+                        where("date", ">=", fechaInicio), 
+                        where("date", "<=", fechaFin)
+                    );
+                    const gastosSnapshot = await getDocs(q);
+
+                    finanzasTableHead.innerHTML = `<tr>
+                        <th class="p-2">Fecha</th>
+                        <th class="p-2">Operación</th>
+                        <th class="p-2">Concepto</th>
+                        <th class="p-2">Categoría</th>
+                        <th class="p-2">Medio de Pago</th>
+                        <th class="p-2 text-right">Importe</th>
+                    </tr>`;
+
+                    if (gastosSnapshot.empty) {
+                        finanzasTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">No se encontraron gastos.</td></tr>`;
+                        finanzasTableFoot.innerHTML = '';
+                        return;
+                    }
+
+                    const gastosData = gastosSnapshot.docs.map(doc => doc.data()).sort((a,b) => a.date.localeCompare(b.date));
+                    const categoriasOperativas = categoriasGastoCache.filter(c => c.visibleParaCajero).map(c => c.nombre);
+                    
+                    let totalGeneral = 0;
+                    finanzasTableBody.innerHTML = gastosData.map(gasto => {
+                        totalGeneral += gasto.amount || 0;
+                        const tipoOperacion = categoriasOperativas.includes(gasto.categoria) ? 'Operativo' : 'Administrativo';
+                        return `<tr>
+                            <td class="p-2 border-t border-gray-700">${gasto.date}</td>
+                            <td class="p-2 border-t border-gray-700">${tipoOperacion}</td>
+                            <td class="p-2 border-t border-gray-700">${gasto.concept}</td>
+                            <td class="p-2 border-t border-gray-700">${gasto.categoria}</td>
+                            <td class="p-2 border-t border-gray-700">${gasto.paymentMethod}</td>
+                            <td class="p-2 border-t border-gray-700 text-right font-semibold text-red-400">$${(gasto.amount || 0).toLocaleString('es-AR')}</td>
+                        </tr>`;
+                    }).join('');
+
+                    finanzasTableFoot.innerHTML = `<tr>
+                        <td colspan="5" class="p-2 font-bold">TOTAL GASTOS</td>
+                        <td class="p-2 text-right font-bold text-red-400">$${totalGeneral.toLocaleString('es-AR')}</td>
+                    </tr>`;
+
+                } catch (error) {
+                    log(`Error generando reporte de gastos: ${error.message}`);
+                    showToast('No se pudo generar el reporte de gastos.', true);
+                    finanzasTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400">Error al cargar datos.</td></tr>`;
+                }
+            }
+
+            async function generarReportePagos(fechaInicio, fechaFin) {
+                try {
+                    const q = query(collection(db, `artifacts/${appId}/public/data/comandas`),
+                        where("fecha", ">=", fechaInicio),
+                        where("fecha", "<=", fechaFin)
+                    );
+                    const comandasSnapshot = await getDocs(q);
+
+                    finanzasTableHead.innerHTML = `<tr>
+                        <th class="p-2">Nº Com.</th>
+                        <th class="p-2">Fecha</th>
+                        <th class="p-2">Medio de Pago</th>
+                        <th class="p-2 text-right">Importe</th>
+                        <th class="p-2 text-right">Recargo</th>
+                    </tr>`;
+                    
+                    if (comandasSnapshot.empty) {
+                        finanzasTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">No se encontraron pagos.</td></tr>`;
+                        finanzasTableFoot.innerHTML = '';
+                        return;
+                    }
+                    
+                    let reportData = [];
+                    comandasSnapshot.forEach(doc => {
+                        const comanda = doc.data();
+                        (comanda.pagos || []).forEach(pago => {
+                            reportData.push({
+                                numero: comanda.numero,
+                                fecha: comanda.fecha,
+                                metodo: pago.metodo,
+                                importe: pago.monto || 0,
+                                recargo: pago.recargo || 0
+                            });
+                        });
+                    });
+                    
+                    reportData.sort((a, b) => a.fecha.localeCompare(b.fecha) || a.numero.localeCompare(b.numero));
+
+                    let totalImporte = 0;
+                    let totalRecargo = 0;
+                    finanzasTableBody.innerHTML = reportData.map(row => {
+                        totalImporte += row.importe;
+                        totalRecargo += row.recargo;
+                        return `<tr>
+                            <td class="p-2 border-t border-gray-700">${row.numero}</td>
+                            <td class="p-2 border-t border-gray-700">${row.fecha}</td>
+                            <td class="p-2 border-t border-gray-700">${row.metodo}</td>
+                            <td class="p-2 border-t border-gray-700 text-right">$${row.importe.toLocaleString('es-AR')}</td>
+                            <td class="p-2 border-t border-gray-700 text-right text-yellow-400">$${row.recargo.toLocaleString('es-AR')}</td>
+                        </tr>`;
+                    }).join('');
+
+                    finanzasTableFoot.innerHTML = `<tr>
+                        <td colspan="3" class="p-2 font-bold">TOTALES</td>
+                        <td class="p-2 text-right font-bold">$${totalImporte.toLocaleString('es-AR')}</td>
+                        <td class="p-2 text-right font-bold text-yellow-400">$${totalRecargo.toLocaleString('es-AR')}</td>
+                    </tr>`;
+
+                } catch (error) {
+                    log(`Error generando reporte de pagos: ${error.message}`);
+                    showToast('No se pudo generar el reporte de pagos.', true);
+                    finanzasTableBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-400">Error al cargar datos.</td></tr>`;
+                }
+            }
+
+
+            exportarPdfFinanzasBtn.addEventListener('click', () => {
+                const select = document.getElementById('finanzas-reporte-select');
+                const tipoReporte = select.value;
+                const reportName = select.options[select.selectedIndex].text;
+
+                if (!['detalleComandas', 'ventas', 'gastos', 'pagos'].includes(tipoReporte)) {
+                    showToast('Función de exportar no disponible para este reporte aún.');
+                    return;
+                }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const fechaInicio = document.getElementById('finanzas-fecha-inicio').value;
+                const fechaFin = document.getElementById('finanzas-fecha-fin').value;
+
+                doc.text(`Reporte: ${reportName}`, 14, 15);
+                doc.setFontSize(10);
+                doc.text(`Período: ${fechaInicio} al ${fechaFin}`, 14, 20);
+
+                doc.autoTable({
+                    html: '#finanzas-report-table',
+                    startY: 25,
+                    theme: 'grid',
+                    headStyles: { fillColor: [31, 41, 55] },
+                    footStyles: { fillColor: [17, 24, 39], textColor: [255, 255, 255], fontStyle: 'bold' }
+                });
+                doc.save(`reporte_${tipoReporte}_${fechaInicio}_${fechaFin}.pdf`);
+            });
+
+            exportarXlsxFinanzasBtn.addEventListener('click', () => {
+                const select = document.getElementById('finanzas-reporte-select');
+                const tipoReporte = select.value;
+                const reportName = select.options[select.selectedIndex].text;
+                if (!['detalleComandas', 'ventas', 'gastos', 'pagos'].includes(tipoReporte)) {
+                    showToast('Función de exportar no disponible para este reporte aún.');
+                    return;
+                }
+                const table = document.getElementById('finanzas-report-table');
+                const wb = XLSX.utils.table_to_book(table, { sheet: reportName });
+                const fechaInicio = document.getElementById('finanzas-fecha-inicio').value;
+                const fechaFin = document.getElementById('finanzas-fecha-fin').value;
+                XLSX.writeFile(wb, `reporte_${tipoReporte}_${fechaInicio}_${fechaFin}.xlsx`);
+            });
+
             retirarDineroBtn.addEventListener('click', async () => {
                 const today = new Date().toISOString().slice(0, 10);
                 const q = query(collection(db, `artifacts/${appId}/public/data/movimientos`), where("date", "==", today), where("type", "==", "retiro"));
@@ -1899,12 +2237,7 @@
                 const retiros = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 
                 if (retiros.length > 0) {
-                    retirosList.innerHTML = retiros.map(r => `
-                        <div class="flex justify-between items-center bg-gray-700 p-2 rounded-md">
-                            <span>$${r.amount.toLocaleString('es-AR')}</span>
-                            <button class="delete-retiro-btn text-red-400 hover:text-red-600" data-id="${r.id}">Eliminar</button>
-                        </div>
-                    `).join('');
+                    retirosList.innerHTML = retiros.map(r => `<div class="flex justify-between items-center bg-gray-700 p-2 rounded-md"><span>$${r.amount.toLocaleString('es-AR')}</span><button class="delete-retiro-btn text-red-400 hover:text-red-600" data-id="${r.id}">Eliminar</button></div>`).join('');
                 } else {
                     retirosList.innerHTML = '<p class="text-gray-500">No hay retiros registrados hoy.</p>';
                 }
@@ -1917,19 +2250,9 @@
             retiroForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const monto = parseFloat(retiroMontoInput.value);
-                if (isNaN(monto) || monto <= 0) {
-                    showToast('Ingrese un monto válido.', true);
-                    return;
-                }
+                if (isNaN(monto) || monto <= 0) { showToast('Ingrese un monto válido.', true); return; }
                 const now = new Date();
-                const newRetiro = {
-                    type: 'retiro',
-                    concept: 'Retiro de Caja',
-                    amount: monto,
-                    date: now.toISOString().slice(0, 10),
-                    time: now.toTimeString().slice(0, 5),
-                    createdAt: serverTimestamp()
-                };
+                const newRetiro = { type: 'retiro', concept: 'Retiro de Caja', amount: monto, date: now.toISOString().slice(0, 10), time: now.toTimeString().slice(0, 5), createdAt: serverTimestamp() };
                 try {
                     await addDoc(collection(db, `artifacts/${appId}/public/data/movimientos`), newRetiro);
                     showToast('Retiro guardado correctamente.');
@@ -1959,4 +2282,3 @@
     </script>
 </body>
 </html>
-
