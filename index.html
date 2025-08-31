@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hugo Amadey Admin App v0.13.4</title>
+    <title>Hugo Amadey Admin App v0.18.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#121212"/>
     <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/leandroidecba/HugoAmadeyApp/main/logo-192.png">
     
-    <!-- Librerías para Reportes -->
+    <!-- Librerías para Reportes y Gráficos -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.0/dist/echarts.min.js"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         .modal-container { visibility: hidden; opacity: 0; transition: visibility 0s 300ms, opacity 300ms ease-in-out; }
@@ -59,6 +61,9 @@
         .table-container {
             max-height: 40vh;
             overflow: auto;
+        }
+        .chart-container {
+            height: 40vh;
         }
     </style>
 </head>
@@ -200,33 +205,38 @@
                                 <input type="date" id="finanzas-fecha-fin" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
                             </div>
                             <select id="finanzas-reporte-select" class="w-full bg-gray-700 rounded-lg px-3 py-2 text-sm">
-                                <option value="comandas">Comandas</option>
-                                <option value="detalleComandas">Detalle de Items</option>
-                                <option value="ventas">Ventas</option>
-                                <option value="gastos">Gastos</option>
-                                <option value="pagos">Pagos</option>
-                                <option value="resumenFinanciero">Resumen Financiero</option>
+                                <optgroup label="Tablas">
+                                    <option value="comandas">Comandas</option>
+                                    <option value="detalleComandas">Detalle de Items</option>
+                                    <option value="ventas">Ventas</option>
+                                    <option value="gastos">Gastos</option>
+                                    <option value="pagos">Pagos</option>
+                                    <option value="resumenFinanciero">Resumen Financiero</option>
+                                    <option value="comisionesPorProfesional">Comisiones por Profesional</option>
+                                </optgroup>
+                                <optgroup label="Gráficos">
+                                    <option value="graficoComandas">Comandas por día</option>
+                                    <option value="graficoFacturacion">Facturación por día</option>
+                                    <option value="graficoGastoEvolucion">Evolución de Gasto por Mes</option>
+                                    <option value="graficoGastoComposicion">Composición de Gasto</option>
+                                </optgroup>
                             </select>
                             <button id="generar-reporte-finanzas-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Generar Reporte</button>
                         </div>
                         <div id="finanzas-reporte-container" class="hidden">
-                            <div class="table-container custom-scrollbar">
+                            <div id="table-view" class="table-container custom-scrollbar">
                                 <table id="finanzas-report-table" class="w-full text-sm text-left whitespace-nowrap">
-                                    <thead id="finanzas-table-head" class="bg-gray-700 sticky top-0">
-                                        <!-- Header se genera dinámicamente -->
-                                    </thead>
-                                    <tbody id="finanzas-table-body" class="bg-gray-800">
-                                        <!-- Body se genera dinámicamente -->
-                                    </tbody>
-                                    <tfoot id="finanzas-table-foot" class="bg-gray-900 sticky bottom-0">
-                                        <!-- Footer se genera dinámicamente -->
-                                    </tfoot>
+                                    <thead id="finanzas-table-head" class="bg-gray-700 sticky top-0"></thead>
+                                    <tbody id="finanzas-table-body" class="bg-gray-800"></tbody>
+                                    <tfoot id="finanzas-table-foot" class="bg-gray-900 sticky bottom-0"></tfoot>
                                 </table>
                             </div>
-                            <div class="mt-4 grid grid-cols-3 gap-2">
+                            <div id="chart-view" class="chart-container hidden"></div>
+                            <div id="finanzas-export-buttons" class="mt-4 grid grid-cols-3 gap-2">
                                <button id="exportar-pdf-finanzas-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">PDF</button>
                                <button id="exportar-xlsx-finanzas-btn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg">XLSX</button>
                                <button id="ver-tabla-finanzas-btn" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-4 rounded-lg">Ver Tabla</button>
+                               <button id="ver-grafico-finanzas-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg hidden">Ver Gráfico</button>
                             </div>
                         </div>
                     </div>
@@ -593,9 +603,13 @@
             const finanzasTableHead = document.getElementById('finanzas-table-head');
             const finanzasTableBody = document.getElementById('finanzas-table-body');
             const finanzasTableFoot = document.getElementById('finanzas-table-foot');
+            const tableView = document.getElementById('table-view');
+            const chartView = document.getElementById('chart-view');
+            const finanzasExportButtons = document.getElementById('finanzas-export-buttons');
             const exportarPdfFinanzasBtn = document.getElementById('exportar-pdf-finanzas-btn');
             const exportarXlsxFinanzasBtn = document.getElementById('exportar-xlsx-finanzas-btn');
             const verTablaFinanzasBtn = document.getElementById('ver-tabla-finanzas-btn');
+            const verGraficoFinanzasBtn = document.getElementById('ver-grafico-finanzas-btn');
             const installAppBtn = document.getElementById('install-app-btn');
             const comandaScrollableContent = comandaModal.querySelector('.custom-scrollbar');
 
@@ -604,13 +618,20 @@
             let aperturaCajaDocId = null;
             let currentDate = new Date();
             let datesWithRecords = new Set();
-            let currentlyViewedDate = new Date().toISOString().slice(0, 10);
+            let currentlyViewedDate = getLocalDateAsString();
             let currentEditingPreset = { type: null, id: null };
             let currentUserRole = null;
             let selectedRoleForLogin = null;
             let deferredInstallPrompt = null;
+            let finanzasChart = null;
             
             // --- FUNCIONES DE UTILIDAD ---
+            function getLocalDateAsString(date = new Date()) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
             function log(message) {
                 console.log(message);
             }
@@ -622,6 +643,11 @@
                 toastEl.classList.add(isError ? 'bg-red-500' : 'bg-green-500');
                 toastEl.classList.add('show');
                 setTimeout(() => { toastEl.classList.remove('show'); }, 3000);
+            }
+            function formatK(value) {
+                if (value >= 1000000) return (value / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+                if (value >= 1000) return (value / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+                return value;
             }
             function scrollToBottom(element) {
                 setTimeout(() => {
@@ -672,6 +698,34 @@
                         <body>
                             <h1 class="text-xl font-bold mb-4">Reporte</h1>
                             ${tableHTML}
+                        </body>
+                    </html>
+                `);
+                newWindow.document.close();
+            }
+
+            function viewChartInNewWindow(chartInstance) {
+                if (!chartInstance) {
+                     showToast('No hay gráfico para visualizar.', true);
+                    return;
+                }
+                 const option = chartInstance.getOption();
+                 const newWindow = window.open('', '_blank');
+                 newWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Vista de Gráfico</title>
+                             <style>body { margin: 0; padding: 0; background-color: #121212; }</style>
+                        </head>
+                        <body>
+                            <div id="main" style="width: 100vw; height: 100vh;"></div>
+                            <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.0/dist/echarts.min.js"><\/script>
+                            <script type="text/javascript">
+                                var myChart = echarts.init(document.getElementById('main'));
+                                var option = ${JSON.stringify(option)};
+                                myChart.setOption(option);
+                                window.addEventListener('resize', () => myChart.resize());
+                            <\/script>
                         </body>
                     </html>
                 `);
@@ -815,7 +869,7 @@
                     document.getElementById('date-selector-btn').classList.add('hidden');
                     document.getElementById('admin-gastos-section').classList.add('hidden');
                     document.getElementById('summary-admin-gastos-row').classList.add('hidden');
-                    const today = new Date().toISOString().slice(0, 10);
+                    const today = getLocalDateAsString();
                     fetchDetailsForDate(today);
                     document.getElementById('ajustes-content').innerHTML = '<p class="p-6 text-center text-gray-500">No tienes permisos para ver esta sección.</p>';
                 }
@@ -842,7 +896,7 @@
             tabDashboardBtn.addEventListener('click', () => switchTab('dashboard'));
             tabReportesBtn.addEventListener('click', () => {
                 switchTab('reportes');
-                const todayString = new Date().toISOString().slice(0, 10);
+                const todayString = getLocalDateAsString();
                 currentlyViewedDate = todayString;
                 updateDateSelectorButton(todayString);
                 fetchDetailsForDate(todayString);
@@ -894,7 +948,7 @@
             }
             
             function listenToDailyData() {
-                const today = new Date().toISOString().slice(0, 10);
+                const today = getLocalDateAsString();
                 const qComandas = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", "==", today));
                 const qMovimientos = query(collection(db, `artifacts/${appId}/public/data/movimientos`), where("date", "==", today));
                 onSnapshot(qComandas, (snapshot) => {
@@ -980,7 +1034,7 @@
                         if (doc.data().fecha) datesWithRecords.add(doc.data().fecha);
                     });
                     renderCalendar(currentDate.getFullYear(), currentDate.getMonth());
-                    const todayString = new Date().toISOString().slice(0, 10);
+                    const todayString = getLocalDateAsString();
                     currentlyViewedDate = todayString;
                     updateDateSelectorButton(todayString);
                     fetchDetailsForDate(todayString);
@@ -1206,7 +1260,7 @@
                             paymentMethod: medioPago, 
                             amount: monto, 
                             deCaja: esDeCaja,
-                            date: now.toISOString().slice(0, 10), 
+                            date: getLocalDateAsString(now), 
                             time: now.toTimeString().slice(0, 5), 
                             createdAt: serverTimestamp() 
                         };
@@ -1576,7 +1630,7 @@
 
                     } else {
                         const now = new Date();
-                        comandaData.fecha = now.toISOString().slice(0, 10);
+                        comandaData.fecha = getLocalDateAsString(now);
                         comandaData.hora = now.toTimeString().slice(0, 5);
                         comandaData.createdAt = serverTimestamp();
                         
@@ -1598,7 +1652,7 @@
                 const monto = parseFloat(cajaInicialInput.value);
                 if(isNaN(monto) || monto < 0) { showToast("Ingresa un monto válido.", true); return; }
                 const now = new Date();
-                const newApertura = { type: 'apertura', concept: 'Apertura de Caja', amount: monto, date: now.toISOString().slice(0, 10), time: now.toTimeString().slice(0, 5), createdAt: serverTimestamp() };
+                const newApertura = { type: 'apertura', concept: 'Apertura de Caja', amount: monto, date: getLocalDateAsString(now), time: now.toTimeString().slice(0, 5), createdAt: serverTimestamp() };
                 try {
                     if(aperturaCajaDocId) await updateDoc(doc(db, `artifacts/${appId}/public/data/movimientos`, aperturaCajaDocId), { amount: monto });
                     else await addDoc(collection(db, `artifacts/${appId}/public/data/movimientos`), newApertura);
@@ -1996,9 +2050,24 @@
                 }
 
                 finanzasReporteContainer.classList.remove('hidden');
-                finanzasTableHead.innerHTML = '';
-                finanzasTableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-400">Generando reporte...</td></tr>`;
-                finanzasTableFoot.innerHTML = '';
+                
+                const isChart = tipoReporte.startsWith('grafico');
+                tableView.classList.toggle('hidden', isChart);
+                chartView.classList.toggle('hidden', !isChart);
+                exportarXlsxFinanzasBtn.classList.toggle('hidden', isChart);
+                verTablaFinanzasBtn.classList.toggle('hidden', isChart);
+                verGraficoFinanzasBtn.classList.toggle('hidden', !isChart);
+                finanzasExportButtons.classList.replace(isChart ? 'grid-cols-3' : 'grid-cols-2', isChart ? 'grid-cols-2' : 'grid-cols-3');
+
+
+                if (isChart) {
+                   chartView.innerHTML = '<p class="text-center text-gray-400">Generando gráfico...</p>';
+                } else {
+                    finanzasTableHead.innerHTML = '';
+                    finanzasTableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-400">Generando reporte...</td></tr>`;
+                    finanzasTableFoot.innerHTML = '';
+                }
+
 
                 switch (tipoReporte) {
                     case 'comandas':
@@ -2019,6 +2088,21 @@
                     case 'resumenFinanciero':
                         await generarReporteResumenFinanciero(fechaInicio, fechaFin);
                         break;
+                    case 'comisionesPorProfesional':
+                        await generarReporteComisionesPorProfesional(fechaInicio, fechaFin);
+                        break;
+                    case 'graficoComandas':
+                        await generarGraficoComandasPorDia(fechaInicio, fechaFin);
+                        break;
+                    case 'graficoFacturacion':
+                        await generarGraficoFacturacionPorDia(fechaInicio, fechaFin);
+                        break;
+                    case 'graficoGastoEvolucion':
+                        await generarGraficoGastoEvolucion(fechaInicio, fechaFin);
+                        break;
+                    case 'graficoGastoComposicion':
+                        await generarGraficoGastoComposicion(fechaInicio, fechaFin);
+                        break;
                     default:
                         showToast('Este reporte aún no está disponible.');
                         finanzasTableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-gray-500">Reporte no disponible.</td></tr>`;
@@ -2028,8 +2112,10 @@
             
             async function generarReporteResumenFinanciero(fechaInicio, fechaFin) {
                 try {
-                    const q = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", fechaInicio), where("fecha", "<=", fechaFin));
-                    const comandasSnapshot = await getDocs(q);
+                    const qComandas = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", fechaInicio), where("fecha", "<=", fechaFin));
+                    const qGastos = query(collection(db, `artifacts/${appId}/public/data/movimientos`), where("type", "==", "gasto"), where("date", ">=", fechaInicio), where("date", "<=", fechaFin));
+                    
+                    const [comandasSnapshot, gastosSnapshot] = await Promise.all([getDocs(qComandas), getDocs(qGastos)]);
 
                     let totalFacturadoBruto = 0;
                     let totalDescuentos = 0;
@@ -2058,6 +2144,31 @@
                     const netoVentas = totalFacturadoBruto - totalDescuentos;
                     const totalFacturacion = netoVentas + totalRecargos;
 
+                    let gastosOperativos = 0;
+                    let gastosAdministrativosSinSueldos = 0;
+                    let gastosSueldos = 0;
+                    let sueldoHugo = 0;
+                    const categoriasOperativas = categoriasGastoCache.filter(c => c.visibleParaCajero).map(c => c.nombre);
+
+                    gastosSnapshot.forEach(doc => {
+                        const gasto = doc.data();
+                        if (gasto.categoria && gasto.categoria.toLowerCase() === 'sueldos') {
+                            if (gasto.concept && gasto.concept.toLowerCase().includes('hugo')) {
+                                sueldoHugo += gasto.amount || 0;
+                            } else {
+                                gastosSueldos += gasto.amount || 0;
+                            }
+                        } else if (categoriasOperativas.includes(gasto.categoria)) {
+                            gastosOperativos += gasto.amount || 0;
+                        } else {
+                            gastosAdministrativosSinSueldos += gasto.amount || 0;
+                        }
+                    });
+
+                    const totalGastosOpYAdmin = gastosOperativos + gastosAdministrativosSinSueldos + gastosSueldos;
+                    const utilidades = totalFacturacion - totalGastosOpYAdmin;
+                    const rentabilidadNeta = totalFacturacion - totalGastosOpYAdmin - sueldoHugo;
+
                     let reportHTML = `
                         <tr><td class="p-2 font-bold" colspan="2">Ventas</td></tr>
                         <tr><td class="p-2 pl-6">Total facturado por comandas (sin descuento)</td><td class="p-2 text-right">$${totalFacturadoBruto.toLocaleString('es-AR')}</td></tr>
@@ -2080,6 +2191,21 @@
                     }
                     const totalPagos = totalPagosAgregados + totalRecargos;
                     reportHTML += `<tr><td class="p-2 pl-6 font-semibold">Total de pagos</td><td class="p-2 text-right font-semibold">$${totalPagos.toLocaleString('es-AR')}</td></tr>`;
+                    
+                    reportHTML += `
+                        <tr><td class="p-2 font-bold" colspan="2">Gastos</td></tr>
+                        <tr><td class="p-2 pl-6">Gastos Operativos</td><td class="p-2 text-right text-red-400">-$${gastosOperativos.toLocaleString('es-AR')}</td></tr>
+                        <tr><td class="p-2 pl-6">Gastos Administrativos (excepto sueldos)</td><td class="p-2 text-right text-red-400">-$${gastosAdministrativosSinSueldos.toLocaleString('es-AR')}</td></tr>
+                        <tr><td class="p-2 pl-6">Gastos por Sueldos</td><td class="p-2 text-right text-red-400">-$${gastosSueldos.toLocaleString('es-AR')}</td></tr>
+                        <tr><td class="p-2 pl-6 font-semibold">Total de Gastos Operativos y Administrativos</td><td class="p-2 text-right font-semibold text-red-400">-$${totalGastosOpYAdmin.toLocaleString('es-AR')}</td></tr>
+
+                        <tr><td class="p-2 font-bold" colspan="2">Sueldo Hugo</td></tr>
+                        <tr><td class="p-2 pl-6">Sueldo Hugo</td><td class="p-2 text-right text-red-400">-$${sueldoHugo.toLocaleString('es-AR')}</td></tr>
+
+                        <tr><td class="p-2 font-bold" colspan="2">Rentabilidad</td></tr>
+                        <tr><td class="p-2 pl-6">Utilidades</td><td class="p-2 text-right">$${utilidades.toLocaleString('es-AR')}</td></tr>
+                        <tr><td class="p-2 pl-6 font-semibold">Rentabilidad Neta</td><td class="p-2 text-right font-semibold">$${rentabilidadNeta.toLocaleString('es-AR')}</td></tr>
+                    `;
 
 
                     finanzasTableHead.innerHTML = '';
@@ -2383,13 +2509,14 @@
                         <th class="p-2">Nº Com.</th>
                         <th class="p-2">Fecha</th>
                         <th class="p-2">Medio de Pago</th>
+                        <th class="p-2">Digital</th>
                         <th class="p-2 text-right">Importe</th>
                         <th class="p-2 text-right">Recargo</th>
                         <th class="p-2 text-right">Total</th>
                     </tr>`;
                     
                     if (comandasSnapshot.empty) {
-                        finanzasTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">No se encontraron pagos.</td></tr>`;
+                        finanzasTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-gray-400">No se encontraron pagos.</td></tr>`;
                         finanzasTableFoot.innerHTML = '';
                         return;
                     }
@@ -2398,10 +2525,12 @@
                     comandasSnapshot.forEach(doc => {
                         const comanda = doc.data();
                         (comanda.pagos || []).forEach(pago => {
+                             const medioDePago = mediosDePagoCache.find(m => m.nombre === pago.metodo);
                             reportData.push({
                                 numero: comanda.numero,
                                 fecha: comanda.fecha,
                                 metodo: pago.metodo,
+                                esDigital: medioDePago && medioDePago.esDigital ? 'Sí' : 'No',
                                 importe: pago.monto || 0,
                                 recargo: pago.recargo || 0
                             });
@@ -2422,6 +2551,7 @@
                             <td class="p-2 border-t border-gray-700">${row.numero}</td>
                             <td class="p-2 border-t border-gray-700">${row.fecha}</td>
                             <td class="p-2 border-t border-gray-700">${row.metodo}</td>
+                            <td class="p-2 border-t border-gray-700">${row.esDigital}</td>
                             <td class="p-2 border-t border-gray-700 text-right">$${row.importe.toLocaleString('es-AR')}</td>
                             <td class="p-2 border-t border-gray-700 text-right text-yellow-400">$${row.recargo.toLocaleString('es-AR')}</td>
                             <td class="p-2 border-t border-gray-700 text-right font-semibold">$${totalFila.toLocaleString('es-AR')}</td>
@@ -2429,7 +2559,7 @@
                     }).join('');
 
                     finanzasTableFoot.innerHTML = `<tr>
-                        <td colspan="3" class="p-2 font-bold">TOTALES</td>
+                        <td colspan="4" class="p-2 font-bold">TOTALES</td>
                         <td class="p-2 text-right font-bold">$${totalImporte.toLocaleString('es-AR')}</td>
                         <td class="p-2 text-right font-bold text-yellow-400">$${totalRecargo.toLocaleString('es-AR')}</td>
                         <td class="p-2 text-right font-bold text-green-400">$${totalGeneral.toLocaleString('es-AR')}</td>
@@ -2438,7 +2568,429 @@
                 } catch (error) {
                     log(`Error generando reporte de pagos: ${error.message}`);
                     showToast('No se pudo generar el reporte de pagos.', true);
-                    finanzasTableBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-400">Error al cargar datos.</td></tr>`;
+                    finanzasTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-400">Error al cargar datos.</td></tr>`;
+                }
+            }
+
+            async function generarReporteComisionesPorProfesional(fechaInicio, fechaFin) {
+                try {
+                    finanzasTableHead.innerHTML = `<tr>
+                        <th class="p-2">Profesional</th>
+                        <th class="p-2 text-right">Total Comisiones</th>
+                    </tr>`;
+                    finanzasTableBody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-400">Generando reporte...</td></tr>`;
+                    finanzasTableFoot.innerHTML = '';
+
+                    const q = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", fechaInicio), where("fecha", "<=", fechaFin));
+                    const comandasSnapshot = await getDocs(q);
+
+                    if (comandasSnapshot.empty) {
+                        finanzasTableBody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-400">No se encontraron datos.</td></tr>`;
+                        return;
+                    }
+                    
+                    const comisionesPorProfesional = {};
+
+                    comandasSnapshot.forEach(doc => {
+                        const comanda = doc.data();
+                        (comanda.items || []).forEach(item => {
+                            if (item.profesionalId) {
+                                const profesional = profesionalesCache.find(p => p.id === item.profesionalId);
+                                if (!profesional) return;
+
+                                let categoriaComision;
+                                if (item.type === 'servicio') {
+                                    const servicio = serviciosCache.find(s => s.id === item.servicioId);
+                                    categoriaComision = item.isVoucher ? 'V' : servicio?.categoria;
+                                } else if (item.type === 'producto') {
+                                    categoriaComision = 'P';
+                                }
+
+                                if (categoriaComision) {
+                                    const porcentaje = profesional.comisiones?.[categoriaComision] || 0;
+                                    const comision = (item.precio || 0) * (porcentaje / 100);
+
+                                    if (!comisionesPorProfesional[profesional.id]) {
+                                        comisionesPorProfesional[profesional.id] = {
+                                            nombre: profesional.nombre,
+                                            total: 0
+                                        };
+                                    }
+                                    comisionesPorProfesional[profesional.id].total += comision;
+                                }
+                            }
+                        });
+                    });
+
+                    const reportData = Object.values(comisionesPorProfesional).sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+                    if (reportData.length === 0) {
+                        finanzasTableBody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-gray-400">No se encontraron comisiones en el período.</td></tr>`;
+                        return;
+                    }
+
+                    let totalGeneral = 0;
+                    finanzasTableBody.innerHTML = reportData.map(row => {
+                        totalGeneral += row.total;
+                        return `<tr>
+                            <td class="p-2 border-t border-gray-700">${row.nombre}</td>
+                            <td class="p-2 border-t border-gray-700 text-right font-semibold text-green-400">$${row.total.toLocaleString('es-AR')}</td>
+                        </tr>`;
+                    }).join('');
+
+                    finanzasTableFoot.innerHTML = `<tr>
+                        <td class="p-2 font-bold">TOTAL GENERAL</td>
+                        <td class="p-2 text-right font-bold text-green-400">$${totalGeneral.toLocaleString('es-AR')}</td>
+                    </tr>`;
+
+                } catch (error) {
+                    log(`Error generando reporte de comisiones por profesional: ${error.message}`);
+                    showToast('No se pudo generar el reporte.', true);
+                    finanzasTableBody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-red-400">Error al cargar datos.</td></tr>`;
+                }
+            }
+            
+            async function generarGraficoComandasPorDia(fechaInicio, fechaFin) {
+                try {
+                    const start = new Date(fechaInicio + 'T00:00:00');
+                    const end = new Date(fechaFin + 'T00:00:00');
+                    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+                    const prevEnd = new Date(start);
+                    prevEnd.setDate(prevEnd.getDate() - 1);
+                    const prevStart = new Date(prevEnd);
+                    prevStart.setDate(prevStart.getDate() - (diffDays - 1) );
+                    
+                    const prevFechaInicio = prevStart.toISOString().slice(0, 10);
+                    const prevFechaFin = prevEnd.toISOString().slice(0, 10);
+
+                    const qActual = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", fechaInicio), where("fecha", "<=", fechaFin));
+                    const qPrevio = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", prevFechaInicio), where("fecha", "<=", prevFechaFin));
+
+                    const [actualSnapshot, previoSnapshot] = await Promise.all([getDocs(qActual), getDocs(qPrevio)]);
+
+                    const comandasPorDia = {};
+                    actualSnapshot.forEach(doc => {
+                        const fecha = doc.data().fecha;
+                        comandasPorDia[fecha] = (comandasPorDia[fecha] || 0) + 1;
+                    });
+                    
+                    const comandasPorDiaPrevio = {};
+                    previoSnapshot.forEach(doc => {
+                        const fecha = doc.data().fecha;
+                        comandasPorDiaPrevio[fecha] = (comandasPorDiaPrevio[fecha] || 0) + 1;
+                    });
+                    
+                    const labels = Object.keys(comandasPorDia).sort();
+                    if (labels.length === 0) {
+                        chartView.innerHTML = `<p class="text-center text-gray-400 p-4">No hay comandas para el período seleccionado.</p>`;
+                        return;
+                    }
+
+                    const dataActual = labels.map(label => comandasPorDia[label]);
+                    const dataPrevia = labels.map((label, index) => {
+                         const prevDate = new Date(label + 'T00:00:00');
+                         prevDate.setDate(prevDate.getDate() - diffDays);
+                         const prevDateString = prevDate.toISOString().slice(0, 10);
+                         return comandasPorDiaPrevio[prevDateString] || 0;
+                    });
+
+
+                    if (finanzasChart) finanzasChart.dispose();
+                    
+                    chartView.innerHTML = ''; 
+                    finanzasChart = echarts.init(chartView, 'dark');
+
+                    const option = {
+                        backgroundColor: '#1E1E1E',
+                        tooltip: { trigger: 'axis' },
+                        legend: { data: ['Período Actual', 'Período Anterior'], textStyle: { color: '#fff' } },
+                        xAxis: { type: 'category', data: labels, axisLabel: { color: '#fff' } },
+                        yAxis: { type: 'value', axisLabel: { color: '#fff', formatter: formatK } },
+                        series: [
+                            { name: 'Período Actual', type: 'line', smooth: true, data: dataActual, itemStyle: { color: '#3b82f6' }, label: { show: true, position: 'top', color: '#fff', formatter: (params) => formatK(params.value) } },
+                            { name: 'Período Anterior', type: 'line', smooth: true, lineStyle: { type: 'dashed' }, data: dataPrevia, itemStyle: { color: '#9ca3af' }, label: { show: true, position: 'bottom', color: '#ccc', formatter: (params) => formatK(params.value) } }
+                        ]
+                    };
+                    finanzasChart.setOption(option);
+
+                } catch (error) {
+                    log(`Error al generar gráfico de comandas: ${error.message}`);
+                    showToast('No se pudo generar el gráfico de comandas.', true);
+                }
+            }
+
+            async function generarGraficoFacturacionPorDia(fechaInicio, fechaFin) {
+                try {
+                    const start = new Date(fechaInicio + 'T00:00:00');
+                    const end = new Date(fechaFin + 'T00:00:00');
+                    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+
+                    const prevEnd = new Date(start);
+                    prevEnd.setDate(prevEnd.getDate() - 1);
+                    const prevStart = new Date(prevEnd);
+                    prevStart.setDate(prevStart.getDate() - (diffDays - 1));
+
+                    const prevFechaInicio = prevStart.toISOString().slice(0, 10);
+                    const prevFechaFin = prevEnd.toISOString().slice(0, 10);
+
+                    const qActual = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", fechaInicio), where("fecha", "<=", fechaFin));
+                    const qPrevio = query(collection(db, `artifacts/${appId}/public/data/comandas`), where("fecha", ">=", prevFechaInicio), where("fecha", "<=", prevFechaFin));
+                    const qGastos = query(collection(db, `artifacts/${appId}/public/data/movimientos`), where("type", "==", "gasto"), where("date", ">=", fechaInicio), where("date", "<=", fechaFin));
+
+                    const [actualSnapshot, previoSnapshot, gastosSnapshot] = await Promise.all([
+                        getDocs(qActual),
+                        getDocs(qPrevio),
+                        getDocs(qGastos)
+                    ]);
+
+                    const facturacionPorDia = {};
+                    actualSnapshot.forEach(doc => {
+                        const comanda = doc.data();
+                        const fecha = comanda.fecha;
+                        const totalComanda = (comanda.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0) + (pago.recargo || 0), 0);
+                        facturacionPorDia[fecha] = (facturacionPorDia[fecha] || 0) + totalComanda;
+                    });
+
+                    const facturacionPorDiaPrevio = {};
+                    previoSnapshot.forEach(doc => {
+                        const comanda = doc.data();
+                        const fecha = comanda.fecha;
+                        const totalComanda = (comanda.pagos || []).reduce((sum, pago) => sum + (pago.monto || 0) + (pago.recargo || 0), 0);
+                        facturacionPorDiaPrevio[fecha] = (facturacionPorDiaPrevio[fecha] || 0) + totalComanda;
+                    });
+                    
+                    const gastosPorDia = {};
+                    gastosSnapshot.forEach(doc => {
+                        const gasto = doc.data();
+                        const fecha = gasto.date;
+                        gastosPorDia[fecha] = (gastosPorDia[fecha] || 0) + gasto.amount;
+                    });
+                    
+                    const allDates = new Set([...Object.keys(facturacionPorDia), ...Object.keys(gastosPorDia)]);
+                    const labels = Array.from(allDates).sort();
+
+                    if (labels.length === 0) {
+                        chartView.innerHTML = `<p class="text-center text-gray-400 p-4">No hay datos de facturación o gastos para el período seleccionado.</p>`;
+                        return;
+                    }
+
+                    const dataFacturacion = labels.map(label => facturacionPorDia[label] || 0);
+                    const dataGastos = labels.map(label => gastosPorDia[label] || 0);
+                    const dataFacturacionPrevia = labels.map((label) => {
+                        const prevDate = new Date(label + 'T00:00:00');
+                        prevDate.setDate(prevDate.getDate() - diffDays);
+                        const prevDateString = prevDate.toISOString().slice(0, 10);
+                        return facturacionPorDiaPrevio[prevDateString] || 0;
+                    });
+
+
+                    if (finanzasChart) finanzasChart.dispose();
+
+                    chartView.innerHTML = '';
+                    finanzasChart = echarts.init(chartView, 'dark');
+
+                    const option = {
+                        backgroundColor: '#1E1E1E',
+                        tooltip: {
+                            trigger: 'axis',
+                            formatter: (params) => {
+                                let tooltipText = `${params[0].name}<br/>`;
+                                params.forEach(param => {
+                                    tooltipText += `${param.marker} ${param.seriesName}: $${param.value.toLocaleString('es-AR')}<br/>`;
+                                });
+                                return tooltipText;
+                            }
+                        },
+                        legend: { data: ['Facturación', 'Gastos', 'Facturación Anterior'], textStyle: { color: '#fff' } },
+                        xAxis: { type: 'category', data: labels, axisLabel: { color: '#fff' } },
+                        yAxis: { type: 'value', axisLabel: { color: '#fff', formatter: (value) => `$${formatK(value)}` } },
+                        series: [
+                            {
+                                name: 'Facturación',
+                                type: 'line',
+                                smooth: true,
+                                data: dataFacturacion,
+                                itemStyle: { color: '#3b82f6' },
+                                label: { show: true, position: 'top', color: '#fff', formatter: (params) => `$${formatK(params.value)}` }
+                            },
+                            {
+                                name: 'Gastos',
+                                type: 'bar',
+                                data: dataGastos,
+                                itemStyle: { color: '#ef4444' },
+                                label: { show: true, position: 'top', color: '#fff', formatter: (params) => `$${formatK(params.value)}` }
+                            },
+                            {
+                                name: 'Facturación Anterior',
+                                type: 'line',
+                                smooth: true,
+                                lineStyle: { type: 'dashed' },
+                                data: dataFacturacionPrevia,
+                                itemStyle: { color: '#9ca3af' },
+                                label: { show: true, position: 'bottom', color: '#ccc', formatter: (params) => `$${formatK(params.value)}` }
+                            }
+                        ]
+                    };
+                    finanzasChart.setOption(option);
+
+                } catch (error) {
+                    log(`Error al generar gráfico de facturación: ${error.message}`);
+                    showToast('No se pudo generar el gráfico de facturación.', true);
+                }
+            }
+            
+            async function generarGraficoGastoEvolucion(fechaInicio, fechaFin) {
+                try {
+                    const qGastos = query(collection(db, `artifacts/${appId}/public/data/movimientos`), where("type", "==", "gasto"), where("date", ">=", fechaInicio), where("date", "<=", fechaFin));
+                    const gastosSnapshot = await getDocs(qGastos);
+
+                    const gastosPorMes = {};
+                    const categoriasOperativas = categoriasGastoCache.filter(c => c.visibleParaCajero).map(c => c.nombre);
+
+                    gastosSnapshot.forEach(doc => {
+                        const gasto = doc.data();
+                        const mes = gasto.date.substring(0, 7); // YYYY-MM
+
+                        if (!gastosPorMes[mes]) {
+                            gastosPorMes[mes] = { operativos: 0, administrativos: 0, sueldos: 0, sueldoHugo: 0 };
+                        }
+
+                        let categoriaAsignada = '';
+                        if (gasto.categoria && gasto.categoria.toLowerCase() === 'sueldos') {
+                            if (gasto.concept && gasto.concept.toLowerCase().includes('hugo')) {
+                                categoriaAsignada = 'sueldoHugo';
+                            } else {
+                                categoriaAsignada = 'sueldos';
+                            }
+                        } else if (categoriasOperativas.includes(gasto.categoria)) {
+                            categoriaAsignada = 'operativos';
+                        } else {
+                            categoriaAsignada = 'administrativos';
+                        }
+                        gastosPorMes[mes][categoriaAsignada] += gasto.amount || 0;
+                    });
+                    
+                    const meses = Object.keys(gastosPorMes).sort();
+                    if (meses.length === 0) {
+                        chartView.innerHTML = `<p class="text-center text-gray-400 p-4">No hay gastos para el período seleccionado.</p>`;
+                        return;
+                    }
+
+                    const dataOperativos = meses.map(mes => gastosPorMes[mes].operativos);
+                    const dataAdministrativos = meses.map(mes => gastosPorMes[mes].administrativos);
+                    const dataSueldos = meses.map(mes => gastosPorMes[mes].sueldos);
+                    const dataSueldoHugo = meses.map(mes => gastosPorMes[mes].sueldoHugo);
+
+                    if (finanzasChart) finanzasChart.dispose();
+                    chartView.innerHTML = '';
+                    finanzasChart = echarts.init(chartView, 'dark');
+
+                    const option = {
+                        backgroundColor: '#1E1E1E',
+                        tooltip: { trigger: 'axis', axisPointer: { type: 'cross', label: { backgroundColor: '#6a7985' } } },
+                        legend: { data: ['Sueldo Hugo', 'Sueldos', 'Administrativos', 'Operativos'], textStyle: { color: '#fff' } },
+                        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+                        xAxis: [{ type: 'category', boundaryGap: false, data: meses, axisLabel: { color: '#fff' } }],
+                        yAxis: [{ type: 'value', axisLabel: { color: '#fff', formatter: (value) => `$${formatK(value)}` } }],
+                        series: [
+                            { name: 'Operativos', type: 'line', stack: 'Total', areaStyle: {}, emphasis: { focus: 'series' }, data: dataOperativos, smooth: true },
+                            { name: 'Administrativos', type: 'line', stack: 'Total', areaStyle: {}, emphasis: { focus: 'series' }, data: dataAdministrativos, smooth: true },
+                            { name: 'Sueldos', type: 'line', stack: 'Total', areaStyle: {}, emphasis: { focus: 'series' }, data: dataSueldos, smooth: true },
+                            { name: 'Sueldo Hugo', type: 'line', stack: 'Total', areaStyle: {}, emphasis: { focus: 'series' }, data: dataSueldoHugo, smooth: true }
+                        ]
+                    };
+                    finanzasChart.setOption(option);
+
+                } catch (error) {
+                    log(`Error al generar gráfico de evolución de gastos: ${error.message}`);
+                    showToast('No se pudo generar el gráfico.', true);
+                }
+            }
+
+            async function generarGraficoGastoComposicion(fechaInicio, fechaFin) {
+                try {
+                    const qGastos = query(collection(db, `artifacts/${appId}/public/data/movimientos`), where("type", "==", "gasto"), where("date", ">=", fechaInicio), where("date", "<=", fechaFin));
+                    const gastosSnapshot = await getDocs(qGastos);
+
+                    if (gastosSnapshot.empty) {
+                        chartView.innerHTML = `<p class="text-center text-gray-400 p-4">No hay gastos para el período seleccionado.</p>`;
+                        return;
+                    }
+
+                    const totales = { operativos: 0, administrativos: 0, sueldos: 0, sueldoHugo: 0 };
+                    const categoriasOperativas = categoriasGastoCache.filter(c => c.visibleParaCajero).map(c => c.nombre);
+
+                    gastosSnapshot.forEach(doc => {
+                        const gasto = doc.data();
+                        let categoriaAsignada = '';
+                        if (gasto.categoria && gasto.categoria.toLowerCase() === 'sueldos') {
+                            if (gasto.concept && gasto.concept.toLowerCase().includes('hugo')) {
+                                categoriaAsignada = 'sueldoHugo';
+                            } else {
+                                categoriaAsignada = 'sueldos';
+                            }
+                        } else if (categoriasOperativas.includes(gasto.categoria)) {
+                            categoriaAsignada = 'operativos';
+                        } else {
+                            categoriaAsignada = 'administrativos';
+                        }
+                        totales[categoriaAsignada] += gasto.amount || 0;
+                    });
+                    
+                    const chartData = [
+                        { value: totales.operativos, name: 'Operativos' },
+                        { value: totales.administrativos, name: 'Administrativos' },
+                        { value: totales.sueldos, name: 'Sueldos' },
+                        { value: totales.sueldoHugo, name: 'Sueldo Hugo' }
+                    ].filter(item => item.value > 0);
+                    
+                    if (chartData.length === 0) {
+                        chartView.innerHTML = `<p class="text-center text-gray-400 p-4">No hay gastos para el período seleccionado.</p>`;
+                        return;
+                    }
+
+                    if (finanzasChart) finanzasChart.dispose();
+                    chartView.innerHTML = '';
+                    finanzasChart = echarts.init(chartView, 'dark');
+
+                    const option = {
+                        backgroundColor: '#1E1E1E',
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: params => `${params.name}: $${params.value.toLocaleString('es-AR')} (${params.percent}%)`
+                        },
+                        legend: {
+                            orient: 'vertical',
+                            left: 'left',
+                            textStyle: { color: '#fff' }
+                        },
+                        series: [{
+                            name: 'Composición de Gasto',
+                            type: 'pie',
+                            radius: '50%',
+                            data: chartData,
+                            emphasis: {
+                                itemStyle: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            },
+                            label: {
+                                color: '#fff',
+                                formatter: params => `${params.name}\n${params.percent}% ($${formatK(params.value)})`,
+                                position: 'outside'
+                            },
+                            labelLine: {
+                                show: true
+                            }
+                        }]
+                    };
+                    finanzasChart.setOption(option);
+                } catch (error) {
+                    log(`Error al generar gráfico de composición de gastos: ${error.message}`);
+                    showToast('No se pudo generar el gráfico.', true);
                 }
             }
 
@@ -2447,13 +2999,11 @@
                 const select = document.getElementById('finanzas-reporte-select');
                 const tipoReporte = select.value;
                 const reportName = select.options[select.selectedIndex].text;
+                const isChart = tipoReporte.startsWith('grafico');
 
-                if (!['comandas', 'detalleComandas', 'ventas', 'gastos', 'pagos', 'resumenFinanciero'].includes(tipoReporte)) {
-                    showToast('Función de exportar no disponible para este reporte aún.');
-                    return;
-                }
                 const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
+                const doc = new jsPDF(isChart ? { orientation: 'landscape' } : {});
+                
                 const fechaInicio = document.getElementById('finanzas-fecha-inicio').value;
                 const fechaFin = document.getElementById('finanzas-fecha-fin').value;
 
@@ -2461,13 +3011,22 @@
                 doc.setFontSize(10);
                 doc.text(`Período: ${fechaInicio} al ${fechaFin}`, 14, 20);
 
-                doc.autoTable({
-                    html: '#finanzas-report-table',
-                    startY: 25,
-                    theme: 'grid',
-                    headStyles: { fillColor: [31, 41, 55] },
-                    footStyles: { fillColor: [17, 24, 39], textColor: [255, 255, 255], fontStyle: 'bold' }
-                });
+                if (isChart && finanzasChart) {
+                    const imgData = finanzasChart.getDataURL({
+                        pixelRatio: 2,
+                        backgroundColor: '#1E1E1E'
+                    });
+                    doc.addImage(imgData, 'JPEG', 15, 40, 267, 150);
+                } else {
+                     doc.autoTable({
+                        html: '#finanzas-report-table',
+                        startY: 25,
+                        theme: 'grid',
+                        headStyles: { fillColor: [31, 41, 55] },
+                        footStyles: { fillColor: [17, 24, 39], textColor: [255, 255, 255], fontStyle: 'bold' }
+                    });
+                }
+                
                 doc.save(`reporte_${tipoReporte}_${fechaInicio}_${fechaFin}.pdf`);
             });
 
@@ -2475,7 +3034,7 @@
                 const select = document.getElementById('finanzas-reporte-select');
                 const tipoReporte = select.value;
                 const reportName = select.options[select.selectedIndex].text;
-                if (!['comandas', 'detalleComandas', 'ventas', 'gastos', 'pagos', 'resumenFinanciero'].includes(tipoReporte)) {
+                if (!['comandas', 'detalleComandas', 'ventas', 'gastos', 'pagos', 'resumenFinanciero', 'comisionesPorProfesional'].includes(tipoReporte)) {
                     showToast('Función de exportar no disponible para este reporte aún.');
                     return;
                 }
@@ -2487,9 +3046,11 @@
             });
             
             verTablaFinanzasBtn.addEventListener('click', () => viewTableInNewWindow('finanzas-report-table'));
+            verGraficoFinanzasBtn.addEventListener('click', () => viewChartInNewWindow(finanzasChart));
 
 
         });
     </script>
 </body>
 </html>
+
